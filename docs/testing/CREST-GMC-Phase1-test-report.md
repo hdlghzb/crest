@@ -31,19 +31,28 @@ source used for that acceptance build.
 
 | Check | Result | Evidence |
 |---|---|---|
-| CMake configure/build | PASS | 1594 Ninja actions completed |
-| CMake capability test | PASS | `crest/gmc_capabilities`, 1/1 |
-| CMake crest-only CTest | PASS | 16/16, including capability test |
+| CMake configure/build | PASS | 1594 Ninja actions completed (pre-commit build) |
+| CMake capability test | PASS | `crest/gmc_capabilities`, 1/1; post-commit identity check also 1/1 |
+| CMake crest-only CTest | PASS | 16/16 crest tests within full 69/69 CTest run, including capability test |
 | CMake `--version` | PASS | version `3.1.0`, build commit visible |
-| Meson configure/build | PASS | 954/954 targets completed |
+| Meson configure/build | PASS | 686/686 targets completed in clean post-commit tree |
 | Meson capability test | PASS | `crest/gmc_capabilities` |
 | Meson targeted regression | PASS | GMC, `irmsd`, `metadynamics`, 3/3 |
 | Meson `--version` | PASS | version `3.1.0`, build commit visible |
 
 The pre-commit development binaries reported `fork_commit=ff93ba5`, matching the
-source HEAD used at configure time. The post-commit acceptance procedure rebuilds
-from a fresh cache and compares the reported short SHA with the committed HEAD;
-the binary is not accepted from a pre-commit cache.
+source HEAD used at configure time. After the implementation commit
+`0ea628d`, the CMake RelWithDebInfo tree was reconfigured and rebuilt for the
+changed metadata/module targets, and a clean Meson Debug tree was built from
+scratch. Both binaries reported:
+
+```text
+fork_commit=0ea628d
+```
+
+The post-commit capability tests compared this value with
+`git rev-parse --short=7 HEAD`; neither acceptance result used the pre-commit
+binary.
 
 The capability test runs in a temporary directory with no geometry, removes
 `XTBPATH`/`XTBHOME`, and replaces `PATH` with an empty location. It checks exit 0,
