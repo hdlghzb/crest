@@ -113,6 +113,10 @@ subroutine crest_refine(env,input,output)
         end do
         call crest_sploop(env,nall,structures,etmp)
         eread(:) = eread(:)+etmp(:)
+        do j = 1,nall
+          call structures(j)%invalidate_energy_components()
+          structures(j)%energy = eread(j)
+        end do
 
       case (refine%geoopt)
         write (stdout,'("> Geometry optimization of ",i0," structures")') nall
@@ -129,6 +133,10 @@ subroutine crest_refine(env,input,output)
         write (stdout,'("> Free energy correction (δG) for ",i0," structures")') nall
         call crest_hessloop(env,nat,nall,at,xyz,etmp)
         eread(:) = eread(:)+etmp(:)
+        do j = 1,nall
+          call structures(j)%invalidate_energy_components()
+          structures(j)%energy = eread(j)
+        end do
 
       end select
       write (stdout,*)
@@ -145,6 +153,11 @@ subroutine crest_refine(env,input,output)
   do j = 1,nall
     structures(j)%energy = eread(j)
     structures(j)%xyz(1:3,1:nat) = xyz(1:3,1:nat,j)
+    if (structures(j)%energy_components_valid) then
+      if (abs(structures(j)%energy_total-eread(j)) > 1.0e-10_wp) then
+        call structures(j)%invalidate_energy_components()
+      end if
+    end if
     structures(j)%wrextxyz = .true.
   end do
 !>--- write output ensemble in extxyz format

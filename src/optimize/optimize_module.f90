@@ -212,6 +212,15 @@ contains  !> MODULE PROCEDURES START HERE
       !write(stdout,*) "Energy post correction", etot
     endif
 
+    if (iostatus /= 0) then
+      call molnew%invalidate_energy_components()
+    else if (molnew%energy_components_valid) then
+      if (abs(molnew%energy_total-etot) > 1.0e-10_wp) then
+        call molnew%invalidate_energy_components()
+      end if
+    end if
+    molnew%energy = etot
+
     return
   end subroutine optimize_geometry
 

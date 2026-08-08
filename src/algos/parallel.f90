@@ -231,9 +231,11 @@ subroutine crest_sploop(env,nall,structures,eread,silent)
     !$omp critical
     if (io == 0) then
       c = c+1
+      call structures(zcopy)%copy_energy_components(mols(job))
       structures(zcopy)%energy = energy
     else
       structures(zcopy)%energy = 0.0_wp
+      call structures(zcopy)%invalidate_energy_components()
     end if
     k = k+1
     !>--- print progress
@@ -669,6 +671,7 @@ subroutine crest_oloop_struc(env,nall,structures,dump,customcalc,eread,silent)
       !>--- successful optimization (io==0)
       c = c+1
       structures(zcopy)%xyz = molsnew(job)%xyz
+      call structures(zcopy)%copy_energy_components(molsnew(job))
       structures(zcopy)%energy = energy
       if (dump) then
         gnorm = norm2(grad)
@@ -681,9 +684,11 @@ subroutine crest_oloop_struc(env,nall,structures,dump,customcalc,eread,silent)
       !>--- allow partial optimization?
       c = c+1
       structures(zcopy)%xyz = molsnew(job)%xyz
+      call structures(zcopy)%copy_energy_components(molsnew(job))
       structures(zcopy)%energy = energy
     else
       structures(zcopy)%energy = 1.0_wp
+      call structures(zcopy)%invalidate_energy_components()
     end if
     k = k+1
     !>--- print progress

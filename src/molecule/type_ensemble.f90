@@ -433,7 +433,8 @@ contains  !> MODULE PROCEDURES START HERE
     type(extxyz_properties) :: ext_props
     real(wp),allocatable :: exyz(:,:),egrd(:,:),lat(:,:)
     integer,allocatable :: eat(:)
-    real(wp) :: energy
+    real(wp) :: energy,energy_raw,energy_restraint,energy_total
+    logical :: energy_components_found
     character(len=32) :: eu,fu
 
     is_extxyz = sgrep(fname,'Properties=',casesensitive=.false.)
@@ -448,13 +449,20 @@ contains  !> MODULE PROCEDURES START HERE
       open (newunit=iunit,file=trim(fname))
       do ii = 1,nall
         call read_extxyz_frame(iunit,ext_sigs,ext_props,nat,energy,lat,success, &
-        &                      energy_units=eu,forces_units=fu)
+        &                      energy_units=eu,forces_units=fu, &
+        &                      energy_raw=energy_raw, &
+        &                      energy_restraint=energy_restraint, &
+        &                      energy_total=energy_total, &
+        &                      energy_components_found=energy_components_found)
         if (success) then
           select case (trim(eu))
           case ('hartree','ha','au')
             ! energy already in Hartree, no conversion needed
           case default  !> 'ev' and anything unrecognised
             energy = energy/autoeV
+            energy_raw = energy_raw/autoeV
+            energy_restraint = energy_restraint/autoeV
+            energy_total = energy_total/autoeV
           end select
           call get_at_from_ext(ext_props,eat)
           call get_xyz_from_ext(ext_props,exyz)
@@ -463,7 +471,11 @@ contains  !> MODULE PROCEDURES START HERE
           if(allocated(exyz)) call move_alloc(exyz,structures(ii)%xyz)
           if (allocated(lat)) call move_alloc(lat,structures(ii)%lat)
           if (allocated(egrd)) call move_alloc(egrd,structures(ii)%gradient)
-          structures(ii)%energy = energy
+          if (energy_components_found) then
+            call structures(ii)%set_energy_components(energy_raw,energy_restraint,energy_total)
+          else
+            structures(ii)%energy = energy
+          end if
           structures(ii)%wrextxyz = .true.
           structures(ii)%nat = nat
         end if
@@ -486,7 +498,13 @@ contains  !> MODULE PROCEDURES START HERE
         allocate (structures(i)%xyz(3,nat_i))
         structures(i)%xyz(:,:) = xyz(1:3,1:nat_i,i)
         eread(i) = grepenergy(comments(i))
-        structures(i)%energy = eread(i)
+        call parse_energy_components(comments(i),energy_raw,energy_restraint,energy_total, &
+        &                             energy_components_found)
+        if (energy_components_found) then
+          call structures(i)%set_energy_components(energy_raw,energy_restraint,energy_total)
+        else
+          structures(i)%energy = eread(i)
+        end if
         structures(i)%comment = trim(comments(i))
       end do
       deallocate (comments,eread,nats,ats,xyz)
@@ -573,10 +591,18 @@ contains  !> MODULE PROCEDURES START HERE
     implicit none
     class(ensemble) :: self
     character(len=*),intent(in) :: fname
+    integer :: i
     if (.not.self%mixed) then
       call wrensemble_conf_energy(fname,self%nat,self%nall,self%at,self%xyz,self%er)
     else
-      self%structures(:)%energy = self%er(:)
+      do i = 1,self%nall
+        if (self%structures(i)%energy_components_valid) then
+          if (abs(self%structures(i)%energy_total-self%er(i)) > 1.0e-10_wp) then
+            call self%structures(i)%invalidate_energy_components()
+          end if
+        end if
+        self%structures(i)%energy = self%er(i)
+      end do
       call wrensemble_coord_name(fname,self%nall,self%structures)
     end if
     return
@@ -703,6 +729,7 @@ contains  !> MODULE PROCEDURES START HERE
         if (allocated(mol%xyz)) deallocate (mol%xyz)
         allocate (mol%xyz(3,n),source=0.0_wp)
       end if
+      call mol%invalidate_energy_components()
       mol%energy = self%er(i)
       mol%at(:) = self%at(:)
       !> Important, ens is in Angström, mol is in Bohrs
@@ -719,7 +746,7 @@ contains  !> MODULE PROCEDURES START HERE
       mol%nat = self%structures(i)%nat
       mol%at(:) = self%structures(i)%at(:)
       mol%xyz(:,:) = self%structures(i)%xyz(:,:)
-      mol%energy = self%structures(i)%energy
+      call mol%copy_energy_components(self%structures(i))
     end if
   end subroutine ensemble_get_mol
 

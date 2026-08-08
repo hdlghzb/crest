@@ -434,11 +434,6 @@ contains  !> MODULE PROCEDURES START HERE
         write (*,'(6x,"in coords ",3("#",i0,", "),"...")') imax
       end if
 
-!>------------------------------------------------------------------------
-!>--- new coordinates
-!>------------------------------------------------------------------------
-      molopt%xyz = molopt%xyz+reshape(displ, [3,molopt%nat])*alp
-
 !>--- converged ?
       econverged = abs(echng) .lt. ethr
       gconverged = gnorm .lt. gthr
@@ -452,6 +447,10 @@ contains  !> MODULE PROCEDURES START HERE
         etot = energy
         exit RFO_iter
       end if
+!>------------------------------------------------------------------------
+!>--- new coordinates
+!>------------------------------------------------------------------------
+      molopt%xyz = molopt%xyz+reshape(displ, [3,molopt%nat])*alp
 
 !>======================================================================
     end do RFO_iter

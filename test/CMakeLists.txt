@@ -16,6 +16,7 @@ set(
   "ddx"
   "external"
   "oniom"
+  "gmc_energy"
 )
 set(
   test-srcs

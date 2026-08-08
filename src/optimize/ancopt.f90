@@ -571,9 +571,6 @@ contains  !> MODULE PROCEDURES START HERE
         exit main_loop
       end if
 
-!>--- new coordinates
-      OPT%coord = OPT%coord+displ*alp
-
 !>--- converged ?
       econverged = abs(echng) .lt. ethr
       gconverged = gnorm .lt. gthr
@@ -589,6 +586,8 @@ contains  !> MODULE PROCEDURES START HERE
         !return
         exit main_loop
       end if
+!>--- new coordinates
+      OPT%coord = OPT%coord+displ*alp
 !>========================================================================
     end do main_loop
 !>========================================================================

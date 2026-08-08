@@ -110,6 +110,7 @@ contains  !> MODULE PROCEDURES START HERE
     integer :: i,j,k,l,n,io,nocc
     real(wp) :: dum1,dum2
     real(wp) :: efix,gnorm
+    real(wp) :: raw_energy,restraint_energy
     type(coord),pointer :: molptr
     integer :: pnat
     logical :: useONIOM
@@ -121,6 +122,9 @@ contains  !> MODULE PROCEDURES START HERE
     call initsignal()
     energy = 0.0_wp
     gradient(:,:) = 0.0_wp
+    call mol%invalidate_energy_components()
+    raw_energy = 0.0_wp
+    restraint_energy = 0.0_wp
 
 !**********************************
 !>--- check for sane input
@@ -282,6 +286,7 @@ contains  !> MODULE PROCEDURES START HERE
 !**********************************************
 !>--- Constraints
 !**********************************************
+    raw_energy = energy
     if (calc%nconstraints > 0) then
       !$omp critical
       if (.not.allocated(calc%grdfix)) then
@@ -314,6 +319,7 @@ contains  !> MODULE PROCEDURES START HERE
         end if
         !!$omp critical
         energy = energy+efix
+        restraint_energy = restraint_energy+efix
         gradient = gradient+calc%grdfix
         !!$omp end critical
       end do
@@ -339,7 +345,7 @@ contains  !> MODULE PROCEDURES START HERE
 !*********************************************
 !>--- store some outptut data to mol itself?
 !*********************************************
-    mol%energy = energy
+    call mol%set_energy_components(raw_energy,restraint_energy,energy)
     if (allocated(mol%gradient).or.mol%wrextxyz) then
       !$omp critical
       mol%gradient = gradient

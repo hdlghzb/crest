@@ -13,7 +13,7 @@ EXPECTED = {
     "gmc_api_version": 1,
     "crest_version": "3.1.0",
     "upstream_base": "bd27e348ec001e27eab3177586843e8d86f66dc8",
-    "energy_components": False,
+    "energy_components": True,
     "raw_energy_ranking": False,
     "qcg_single_crest_orchestration": True,
     "qcg_aiss_external_xtb": True,
@@ -37,8 +37,9 @@ def main() -> int:
             [binary, "--gmc-capabilities"],
             cwd=workdir,
             env=env,
-            capture_output=True,
-            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            universal_newlines=True,
             check=False,
         )
 

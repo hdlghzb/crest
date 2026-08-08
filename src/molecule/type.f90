@@ -53,6 +53,11 @@ module molecule_type
     !**************************************!
     !>-- energy
     real(wp) :: energy = 0.0_wp
+    !>-- calculator energy components (Hartree)
+    real(wp) :: energy_raw = 0.0_wp
+    real(wp) :: energy_restraint = 0.0_wp
+    real(wp) :: energy_total = 0.0_wp
+    logical :: energy_components_valid = .false.
     !>-- gradient
     real(wp),allocatable :: gradient(:,:)
     !>-- a comment line
@@ -102,6 +107,10 @@ module molecule_type
     procedure :: swap => atswp                  !> swap two atoms coordinates and their at() entries
     procedure :: sumform => coord_sumform       !> generate a string with the sum formula
     procedure :: copy => coord_copy             !> deep copy from another coord object
+    procedure :: set_energy_components => coord_set_energy_components
+    procedure :: invalidate_energy_components => coord_invalidate_energy_components
+    procedure :: copy_energy_components => coord_copy_energy_components
+    procedure :: ranking_energy => coord_ranking_energy
   end type coord
 
 ! ══════════════════════════════════════════════════════════════════════════════
@@ -118,6 +127,11 @@ contains  !> MODULE PROCEDURES START HERE
     implicit none
     class(coord) :: self
     self%nat = 0
+    self%energy_raw = 0.0_wp
+    self%energy_restraint = 0.0_wp
+    self%energy_total = 0.0_wp
+    self%energy_components_valid = .false.
+    if (allocated(self%comment)) deallocate (self%comment)
     if (allocated(self%at)) deallocate (self%at)
     if (allocated(self%xyz)) deallocate (self%xyz)
     call self%pdb%deallocate()
@@ -140,6 +154,10 @@ contains  !> MODULE PROCEDURES START HERE
     ! ── scalar fields ────────────────────────────────────────────────────────
     self%nat      = src%nat
     self%energy   = src%energy
+    self%energy_raw = src%energy_raw
+    self%energy_restraint = src%energy_restraint
+    self%energy_total = src%energy_total
+    self%energy_components_valid = src%energy_components_valid
     self%chrg     = src%chrg
     self%uhf      = src%uhf
     self%nbd      = src%nbd
@@ -168,6 +186,50 @@ contains  !> MODULE PROCEDURES START HERE
 
 ! ──────────────────────────────────────────────────────────────────────────────
 
+  subroutine coord_set_energy_components(self,raw,restraint,total)
+    implicit none
+    class(coord),intent(inout) :: self
+    real(wp),intent(in) :: raw,restraint,total
+    self%energy_raw = raw
+    self%energy_restraint = restraint
+    self%energy_total = total
+    self%energy = total
+    self%energy_components_valid = .true.
+  end subroutine coord_set_energy_components
+
+  subroutine coord_invalidate_energy_components(self)
+    implicit none
+    class(coord),intent(inout) :: self
+    self%energy_raw = 0.0_wp
+    self%energy_restraint = 0.0_wp
+    self%energy_total = 0.0_wp
+    self%energy_components_valid = .false.
+  end subroutine coord_invalidate_energy_components
+
+  subroutine coord_copy_energy_components(self,src)
+    implicit none
+    class(coord),intent(inout) :: self
+    class(coord),intent(in) :: src
+    self%energy = src%energy
+    self%energy_raw = src%energy_raw
+    self%energy_restraint = src%energy_restraint
+    self%energy_total = src%energy_total
+    self%energy_components_valid = src%energy_components_valid
+  end subroutine coord_copy_energy_components
+
+  function coord_ranking_energy(self) result(energy)
+    implicit none
+    class(coord),intent(in) :: self
+    real(wp) :: energy
+    if (self%energy_components_valid) then
+      energy = self%energy_raw
+    else
+      energy = self%energy
+    end if
+  end function coord_ranking_energy
+
+! ──────────────────────────────────────────────────────────────────────────────
+
   subroutine opencoord(self,fname)
 !************************************************
 !* subroutine opencoord                         *
@@ -185,6 +247,9 @@ contains  !> MODULE PROCEDURES START HERE
     integer :: i,j,k,ich,io,iunit
     logical :: ex,success
     real(wp) :: en
+    real(wp) :: raw_en,rest_en,total_en
+    logical :: components_found
+    character(len=512) :: comment
     character(len=32) :: eu,fu
     type(extxyz_signatures) :: ext_sigs
     type(extxyz_properties) :: ext_props
@@ -202,6 +267,11 @@ contains  !> MODULE PROCEDURES START HERE
 
     if (nat > 0) then
       en = 0.0_wp
+      raw_en = 0.0_wp
+      rest_en = 0.0_wp
+      total_en = 0.0_wp
+      components_found = .false.
+      comment = ' '
       allocate (at(nat),xyz(3,nat))
       select case (ftype)
       case (coordtype%PDB)
@@ -211,7 +281,10 @@ contains  !> MODULE PROCEDURES START HERE
       case (coordtype%extxyz)
         open (newunit=iunit,file=fname)
         call read_extxyz_frame(iunit,ext_sigs,ext_props,nat,en,lat,success, &
-        &                      energy_units=eu,forces_units=fu)
+        &                      energy_units=eu,forces_units=fu, &
+        &                      energy_raw=raw_en,energy_restraint=rest_en, &
+        &                      energy_total=total_en, &
+        &                      energy_components_found=components_found)
         close (iunit)
         if (success) then
           select case (trim(eu))
@@ -219,6 +292,9 @@ contains  !> MODULE PROCEDURES START HERE
             ! energy already in Hartree, no conversion needed
           case default  !> 'ev' and anything unrecognised
             en = en/autoeV
+            raw_en = raw_en/autoeV
+            rest_en = rest_en/autoeV
+            total_en = total_en/autoeV
           end select
           call get_at_from_ext(ext_props,at)
           call get_xyz_from_ext(ext_props,xyz)
@@ -228,11 +304,17 @@ contains  !> MODULE PROCEDURES START HERE
         end if
 
       case default
-        call rdcoord(fname,nat,at,xyz,energy=en,ftype=ftype)
+        call rdcoord(fname,nat,at,xyz,energy=en,ftype=ftype,comment=comment)
+        call parse_energy_components(comment,raw_en,rest_en,total_en,components_found)
 
       end select
       self%nat = nat
-      self%energy = en
+      if (components_found) then
+        call self%set_energy_components(raw_en,rest_en,total_en)
+      else
+        self%energy = en
+      end if
+      if (len_trim(comment) > 0) self%comment = trim(comment)
       call move_alloc(at,self%at)
       call move_alloc(xyz,self%xyz)
     else
@@ -438,6 +520,25 @@ contains  !> MODULE PROCEDURES START HERE
 !  ROUTINES FOR WRITING STRUCTURES AND CONVERTING THEM
 ! ══════════════════════════════════════════════════════════════════════════════
 
+  subroutine build_energy_comment(self,line)
+    implicit none
+    class(coord),intent(in) :: self
+    character(len=*),intent(out) :: line
+    character(len=64) :: raw_value,restraint_value,total_value
+    write (raw_value,'(f20.10)') self%energy_raw
+    write (restraint_value,'(f20.10)') self%energy_restraint
+    write (total_value,'(f20.10)') self%energy_total
+    if (self%energy_components_valid) then
+      line = 'energy='//trim(adjustl(total_value))//' energy_raw='// &
+        & trim(adjustl(raw_value))//' energy_restraint='// &
+        & trim(adjustl(restraint_value))//' energy_total='// &
+        & trim(adjustl(total_value))//' energy_units=Hartree'
+    else
+      write (total_value,'(f20.10)') self%energy
+      line = 'energy='//trim(adjustl(total_value))
+    end if
+  end subroutine build_energy_comment
+
   subroutine write_extxyz(self,iunit)
 !*************************************************************************
 !* Write an extended xyz file from the coord object.                     *
@@ -450,20 +551,40 @@ contains  !> MODULE PROCEDURES START HERE
     character(len=200) :: atmp
     integer :: ii
     logical :: use_hartree
+    real(wp) :: raw_out,rest_out,total_out
 
     use_hartree = (trim(extxyz_units_global) .ne. 'ev')
+    total_out = self%energy
+    raw_out = 0.0_wp
+    rest_out = 0.0_wp
+    if (self%energy_components_valid) then
+      total_out = self%energy_total
+      raw_out = self%energy_raw
+      rest_out = self%energy_restraint
+    end if
+    if (.not.use_hartree) then
+      total_out = total_out*autoeV
+      raw_out = raw_out*autoeV
+      rest_out = rest_out*autoeV
+    end if
 
     !> print number of atoms
     write (iunit,'(i10)') self%nat
 
     !> construct ext comment line bit by bit
+    write (atmp,'(f20.10)') total_out
+    write (iunit,'(a,a)',advance='no') trim('energy='//adjustl(atmp)),' '
+    if (self%energy_components_valid) then
+      write (atmp,'(f20.10)') raw_out
+      write (iunit,'(a,a)',advance='no') trim('energy_raw='//adjustl(atmp)),' '
+      write (atmp,'(f20.10)') rest_out
+      write (iunit,'(a,a)',advance='no') trim('energy_restraint='//adjustl(atmp)),' '
+      write (atmp,'(f20.10)') total_out
+      write (iunit,'(a,a)',advance='no') trim('energy_total='//adjustl(atmp)),' '
+    end if
     if (use_hartree) then
-      write (atmp,'(f20.10)') self%energy
-      write (iunit,'(a,a)',advance='no') trim('energy='//adjustl(atmp)),' '
       write (iunit,'(a)',advance='no') 'energy_units=Hartree '
     else
-      write (atmp,'(f20.10)') self%energy*autoeV
-      write (iunit,'(a,a)',advance='no') trim('energy='//adjustl(atmp)),' '
       write (iunit,'(a)',advance='no') 'energy_units=eV '
     end if
     if (allocated(self%lat)) then
@@ -567,7 +688,7 @@ contains  !> MODULE PROCEDURES START HERE
     implicit none
     class(coord) :: self
     character(len=*),intent(in) :: fname
-    character(len=80) :: comment
+    character(len=512) :: comment
     integer :: ftype,iunit
     if (.not.allocated(self%xyz)) then
       write (stdout,*) 'Cannot write ',trim(fname),'. No coordinates allocated'
@@ -578,6 +699,10 @@ contains  !> MODULE PROCEDURES START HERE
     case (coordtype%xyz)
       if (self%wrextxyz) then
         call self%writeextxyz(iunit)
+      else if (self%energy_components_valid) then
+        call build_energy_comment(self,comment)
+        if (allocated(self%comment)) comment = trim(comment)//' '//trim(self%comment)
+        call wrxyz(iunit,self%nat,self%at,self%xyz*autoaa,trim(comment))
       else
         call wrxyz(iunit,self%nat,self%at,self%xyz*autoaa,self%energy)
       end if
@@ -616,17 +741,24 @@ contains  !> MODULE PROCEDURES START HERE
     class(coord) :: self
     integer,intent(in) :: iunit
     real(wp),intent(in),optional :: energy
-    character(len=64) :: atmp
+    character(len=512) :: atmp
     character(len=32) :: btmp
-    real(wp) :: etmp
+    real(wp) :: etmp,rawtmp,resttmp,totaltmp
+    logical :: validtmp,use_components
+    use_components = self%energy_components_valid
+    if (present(energy)) use_components = use_components .and. &
+      & abs(energy-self%energy_total) <= 1.0e-10_wp
     if (.not.self%wrextxyz) then !> regular xyz append
       self%xyz = self%xyz*bohr !to Angström
-      if (present(energy)) then
+      if (use_components) then
+        call build_energy_comment(self,atmp)
+      else if (present(energy)) then
         write (btmp,'(f22.10)') energy
+        write (atmp,'(a,a)') ' energy= ',adjustl(btmp)
       else
         write (btmp,'(f22.10)') self%energy
+        write (atmp,'(a,a)') ' energy= ',adjustl(btmp)
       end if
-      write (atmp,'(a,a)') ' energy= ',adjustl(btmp)
       if (allocated(self%comment)) then
         call wrxyz(iunit,self%nat,self%at,self%xyz, &
         &          trim(atmp)//' '//trim(self%comment))
@@ -637,9 +769,19 @@ contains  !> MODULE PROCEDURES START HERE
     else
       !> extxyz append
       etmp = self%energy
+      rawtmp = self%energy_raw
+      resttmp = self%energy_restraint
+      totaltmp = self%energy_total
+      validtmp = self%energy_components_valid
       if (present(energy)) self%energy = energy
+      if (present(energy).and..not.use_components) &
+        & self%energy_components_valid = .false.
       call self%writeextxyz(iunit)
       self%energy = etmp
+      self%energy_raw = rawtmp
+      self%energy_restraint = resttmp
+      self%energy_total = totaltmp
+      self%energy_components_valid = validtmp
     end if
     return
   end subroutine appendcoord

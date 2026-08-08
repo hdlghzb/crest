@@ -44,6 +44,7 @@ module molecule_io
   end interface asym
   public :: e2i          !> function to convert element symbol into atomic number
   public :: grepenergy
+  public :: parse_energy_components
   public :: checkcoordtype
 
   public :: rdnat       !-- procedure to read number of atoms Nat
@@ -243,7 +244,7 @@ contains  !> MODULE PROCEDURES START HERE
 
 ! ──────────────────────────────────────────────────────────────────────────────
 
-  subroutine rdcoord(fname,nat,at,xyz,energy,ftype)
+  subroutine rdcoord(fname,nat,at,xyz,energy,ftype,comment)
 !*****************************************************************
 !* subroutine rdcoord                                            *
 !* read in a structure. The format is determined automatically   *
@@ -264,6 +265,7 @@ contains  !> MODULE PROCEDURES START HERE
     real(wp),intent(inout) :: xyz(3,nat)
     real(wp),optional :: energy
     integer,intent(in),optional :: ftype
+    character(len=*),intent(out),optional :: comment
     character(len=256) :: atmp
     integer :: ftypedum
     type(pdbdata) :: pdbdummy
@@ -283,8 +285,14 @@ contains  !> MODULE PROCEDURES START HERE
         call rdxmol(fname,nat,at,xyz,atmp)
         energy = grepenergy(atmp)
       else
-        call rdxmol(fname,nat,at,xyz)
+        if (present(comment)) then
+          call rdxmol(fname,nat,at,xyz,atmp)
+          comment = trim(atmp)
+        else
+          call rdxmol(fname,nat,at,xyz)
+        end if
       end if
+      if (present(comment).and.present(energy)) comment = trim(atmp)
       xyz = xyz/bohr
 
     case (coordtype%sdfV2000)      !-- SDF/MOL V2000 file, also Angström
@@ -1007,7 +1015,9 @@ contains  !> MODULE PROCEDURES START HERE
 ! ──────────────────────────────────────────────────────────────────────────────
 
   subroutine read_extxyz_frame(iunit,ext_sigs,ext_props,nat,energy,lat,success, &
-  &                            energy_units,forces_units)
+  &                            energy_units,forces_units,energy_raw, &
+  &                            energy_restraint,energy_total, &
+  &                            energy_components_found)
     implicit none
 
     ! Formal Arguments
@@ -1020,6 +1030,8 @@ contains  !> MODULE PROCEDURES START HERE
     logical,intent(out)         :: success
     character(len=32),intent(out),optional :: energy_units
     character(len=32),intent(out),optional :: forces_units
+    real(wp),intent(out),optional :: energy_raw,energy_restraint,energy_total
+    logical,intent(out),optional :: energy_components_found
 
     ! Internal variables
     integer                      :: i,ierr,total_fields
@@ -1028,10 +1040,23 @@ contains  !> MODULE PROCEDURES START HERE
     logical                      :: found
     real(wp)                     :: lattice(3,3)
     real(wp)                     :: lat_raw(9)
+    real(wp)                     :: raw_value,rest_value,total_value
     character(len=128),allocatable :: line_fields(:)
     character(len=2000)          :: current_line
+    logical :: found_raw,found_restraint,found_total
 
     success = .true.
+    energy = 0.0_wp
+    raw_value = 0.0_wp
+    rest_value = 0.0_wp
+    total_value = 0.0_wp
+    found_raw = .false.
+    found_restraint = .false.
+    found_total = .false.
+    if (present(energy_raw)) energy_raw = 0.0_wp
+    if (present(energy_restraint)) energy_restraint = 0.0_wp
+    if (present(energy_total)) energy_total = 0.0_wp
+    if (present(energy_components_found)) energy_components_found = .false.
 
     ! 1. Read Number of Atoms (nat)
     read (iunit,*,iostat=ierr) nat
@@ -1051,6 +1076,27 @@ contains  !> MODULE PROCEDURES START HERE
     ! Extract Energy
     call get_key_value(comment_line,"energy",val_str,found,case_sensitive=.false.)
     if (found) read (val_str,*) energy
+    call get_key_value(comment_line,"energy_raw",val_str,found_raw,case_sensitive=.false.)
+    if (found_raw) then
+      read (val_str,*,iostat=ierr) raw_value
+      if (ierr /= 0) found_raw = .false.
+    end if
+    call get_key_value(comment_line,"energy_restraint",val_str,found_restraint,case_sensitive=.false.)
+    if (found_restraint) then
+      read (val_str,*,iostat=ierr) rest_value
+      if (ierr /= 0) found_restraint = .false.
+    end if
+    call get_key_value(comment_line,"energy_total",val_str,found_total,case_sensitive=.false.)
+    if (found_total) then
+      read (val_str,*,iostat=ierr) total_value
+      if (ierr /= 0) found_total = .false.
+    end if
+    if (present(energy_components_found)) then
+      energy_components_found = found_raw.and.found_restraint.and.found_total
+    end if
+    if (present(energy_raw)) energy_raw = raw_value
+    if (present(energy_restraint)) energy_restraint = rest_value
+    if (present(energy_total)) energy_total = total_value
 
     ! Extract optional unit specifications (defaults: eV for energy, eV/Ang for forces)
     ! Values are stored lowercase so callers can do case-insensitive comparisons.
@@ -1468,6 +1514,42 @@ contains  !> MODULE PROCEDURES START HERE
     grepenergy = energy
     return
   end function grepenergy
+! ──────────────────────────────────────────────────────────────────────────────
+
+  subroutine parse_energy_components(line,energy_raw,energy_restraint,energy_total,found)
+    implicit none
+    character(len=*),intent(in) :: line
+    real(wp),intent(out) :: energy_raw,energy_restraint,energy_total
+    logical,intent(out) :: found
+    character(len=2000) :: value
+    logical :: found_raw,found_restraint,found_total
+    integer :: io
+
+    energy_raw = 0.0_wp
+    energy_restraint = 0.0_wp
+    energy_total = 0.0_wp
+    found_raw = .false.
+    found_restraint = .false.
+    found_total = .false.
+
+    call get_key_value(line,'energy_raw',value,found_raw,case_sensitive=.false.)
+    if (found_raw) then
+      read (value,*,iostat=io) energy_raw
+      found_raw = io == 0
+    end if
+    call get_key_value(line,'energy_restraint',value,found_restraint,case_sensitive=.false.)
+    if (found_restraint) then
+      read (value,*,iostat=io) energy_restraint
+      found_restraint = io == 0
+    end if
+    call get_key_value(line,'energy_total',value,found_total,case_sensitive=.false.)
+    if (found_total) then
+      read (value,*,iostat=io) energy_total
+      found_total = io == 0
+    end if
+    found = found_raw.and.found_restraint.and.found_total
+  end subroutine parse_energy_components
+
 ! ──────────────────────────────────────────────────────────────────────────────
 
   subroutine get_extxyz_value(comment_line,key,value,found)

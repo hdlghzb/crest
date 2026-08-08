@@ -56,7 +56,7 @@ contains  !> MODULE PROCEDURES START HERE
     if (allocated(this%at)) mol%at = this%at
     if (allocated(this%xyz)) mol%xyz = this%xyz
 
-    mol%energy = this%energy
+    call mol%copy_energy_components(this)
     if (allocated(this%comment)) mol%comment = this%comment
     mol%chrg = this%chrg
     mol%uhf = this%uhf
@@ -76,7 +76,7 @@ contains  !> MODULE PROCEDURES START HERE
     if (allocated(mol%at)) this%at = mol%at
     if (allocated(mol%xyz)) this%xyz = mol%xyz
 
-    this%energy = mol%energy
+    call this%copy_energy_components(mol)
     if (allocated(mol%comment)) this%comment = mol%comment
     this%chrg = mol%chrg
     this%uhf = mol%uhf
@@ -88,4 +88,3 @@ contains  !> MODULE PROCEDURES START HERE
   end subroutine from_coord
 
 end module qcg_coord_type
-
