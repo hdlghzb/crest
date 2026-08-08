@@ -2,7 +2,7 @@
 ## —— 在已验收 CREST 3.1 基线上建立 GMC API v1、分离 raw/restraint/total energy，并使 CREGEN 使用 raw energy
 
 **用途：** 直接交给 Codex / Luna 执行的 Phase 1 当前有效实施文档
-**日期：** 2026-08-08
+**日期：** 2026-08-09
 **GloMinCluster 目标开发线：** `develop/0.2.0a2`
 **CREST fork：** `hdlghzb/crest`
 **CREST upstream：** `crest-lab/crest`
@@ -13,7 +13,7 @@
 **Phase 1 QCG runtime candidate：** **xTB 6.7.0**
 **已验证兼容参考：** xTB `902b313678b95d793122174df09d590365a669d7` QCG PASS
 **已知不兼容：** official tagged xTB 6.7.1 在固定 CREST 3.1 baseline 上 QCG/aISS FAIL
-**Phase 1 状态：** Phase 1-0 baseline 已完成；zero-RMSD MTD hardening 已完成并 push；现在进入 GMC API / energy foundation 实施阶段
+**Phase 1 状态：** Phase 1-0 baseline 与 zero-RMSD MTD hardening 已完成并 push；Commit 1/2 已实现，Commit 2 的 CMake/Meson code-level regression 已通过；CREGEN raw ranking、Release 和 QCG smoke 仍待完成
 
 **当前基础证据文档：**
 
@@ -2654,15 +2654,15 @@ no submodule/gitlink changes
 - [x] fork branch = `glomincluster/crest-3.1-api-v1`；
 - [x] baseline / SOP 已建立；
 - [x] zero-RMSD hardening `ff93ba5` 已验证并 push；
-- [ ] GMC capability fork commit 可追踪并已 push。
+- [x] GMC capability fork commit `70531d5` 可追踪并已 push。
 
 ## Build / regression
 
 - [x] CMake RelWithDebInfo baseline build/CTest 已验证；
-- [ ] Phase 1 modified fork CMake crest-only regression 全 PASS；
-- [ ] Phase 1 targeted Meson Debug tests PASS；
+- [x] Phase 1 modified fork CMake crest-only regression 全 PASS；
+- [x] Phase 1 targeted Meson Debug tests PASS；
 - [ ] clean CREST Release build/test/runtime validation；
-- [ ] compiler/build metadata 已记录。
+- [x] compiler/build metadata 已记录。
 
 完整 Meson 183-test dependency suite 不作为 primary completion checkbox；必须记录是否运行以及与 baseline diagnostics 的差异。
 
@@ -2675,18 +2675,18 @@ no submodule/gitlink changes
 
 ## Energy model
 
-- [ ] `energy_raw`；
-- [ ] `energy_restraint`；
-- [ ] `energy_total`；
-- [ ] `coord%energy = total`；
-- [ ] identity invariant 通过。
+- [x] `energy_raw`；
+- [x] `energy_restraint`；
+- [x] `energy_total`；
+- [x] `coord%energy = total`；
+- [x] identity invariant 通过。
 
 ## Persistence
 
-- [ ] regular XYZ roundtrip；
-- [ ] extxyz roundtrip；
-- [ ] legacy fallback；
-- [ ] hybrid stage metadata persistence / invalidation 正确。
+- [x] regular XYZ roundtrip；
+- [x] extxyz roundtrip；
+- [x] legacy fallback；
+- [x] hybrid stage metadata persistence / invalidation 正确。
 
 ## CREGEN
 
@@ -2699,21 +2699,21 @@ no submodule/gitlink changes
 
 ## API
 
-- [ ] `--gmc-capabilities`；
-- [ ] JSON parseable；
-- [ ] fork/build identity；
-- [ ] upstream SHA；
-- [ ] GMC API version；
-- [ ] `qcg_aiss_external_xtb=true`；
-- [ ] `qcg_aiss_xtb_validated_version="6.7.0"`；
-- [ ] 未实现 capability 不提前标 true。
+- [x] `--gmc-capabilities`；
+- [x] JSON parseable；
+- [x] fork/build identity；
+- [x] upstream SHA；
+- [x] GMC API version；
+- [x] `qcg_aiss_external_xtb=true`；
+- [x] `qcg_aiss_xtb_validated_version="6.7.0"`；
+- [x] 未实现 capability 不提前标 true。
 
 ## Evidence
 
-- [ ] `docs/development/CREST-GMC-FORK.md`；
-- [ ] `docs/testing/CREST-GMC-Phase1-test-report.md`；
-- [ ] commits pushed；
-- [ ] no build/log/binary/raw output committed。
+- [x] `docs/development/CREST-GMC-FORK.md`；
+- [x] `docs/testing/CREST-GMC-Phase1-test-report.md`；
+- [x] Commit 2 与对应文档提交已 push；
+- [x] no build/log/binary/raw output committed。
 
 ---
 

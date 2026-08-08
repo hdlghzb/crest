@@ -1,6 +1,6 @@
 # CREST/GloMinCluster fork: API and provenance
 
-Status: Phase 1 Commit 1, GMC capability/provenance only.
+Status: Phase 1 Commit 2, GMC capability/provenance plus energy-component preservation.
 
 ## Fixed source and runtime boundary
 
@@ -31,7 +31,7 @@ v1 currently reports:
   "crest_version": "3.1.0",
   "fork_commit": "<build-time-short-sha>",
   "upstream_base": "bd27e348ec001e27eab3177586843e8d86f66dc8",
-  "energy_components": false,
+  "energy_components": true,
   "raw_energy_ranking": false,
   "qcg_single_crest_orchestration": true,
   "qcg_aiss_external_xtb": true,
@@ -71,8 +71,19 @@ for `--version` and `--gmc-capabilities`.
 - Development commit `902b313678b95d793122174df09d590365a669d7` passed the recorded
   compatibility check, but is not the default runtime target.
 
-## Scope
+## Commit 2 energy components
 
-`energy_components=false` and `raw_energy_ranking=false` are intentional. Energy
-component preservation, raw-energy CREGEN ranking, QCG changes, constraint changes,
-and MTD A/B or vtight work are not part of Commit 1.
+`coord` retains legacy `energy` as the calculator total and adds
+`energy_raw`, `energy_restraint`, `energy_total`, and
+`energy_components_valid`. The calculator captures the active method energy
+before additive constraints, then records the restraint contribution and total
+as one metadata update. Copies, parallel SP/optimization paths, refinement
+invalidations, plain XYZ comments, and extxyz frames preserve or explicitly
+invalidate the metadata. Files without all three component keys fall back to
+legacy `energy`; `ranking_energy()` is available for that compatibility rule.
+
+## Scope and remaining work
+
+`raw_energy_ranking=false` remains intentional: CREGEN has not yet been changed
+to use raw-energy ranking. QCG, constraint semantics, and MTD A/B or vtight work
+remain outside Commit 2.
