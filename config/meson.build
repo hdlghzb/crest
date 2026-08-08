@@ -179,12 +179,27 @@ endif
 #  Metadata: fill assets/template/metadata.f90 → <builddir>/crest_metadata.fh
 # ═══════════════════════════════════════════════════════════════════════════════
 _git = find_program('git', required : false)
-_commit = 'unknown-commit'
-if _git.found()
-  _r = run_command(_git, 'show', '-s', '--format=%h', check : false)
+_sh = find_program('sh', required : false)
+_commit = ''
+if _sh.found()
+  _r = run_command(
+    _sh, '-c', 'printf "%s" "${CREST_FORK_COMMIT:-}"', check : false,
+  )
+  if _r.returncode() == 0 and _r.stdout().strip() != ''
+    _commit = _r.stdout().strip()
+  endif
+endif
+if _commit == '' and _git.found()
+  _r = run_command(
+    _git, '-C', meson.project_source_root(), 'rev-parse', '--short=7', 'HEAD',
+    check : false,
+  )
   if _r.returncode() == 0
     _commit = _r.stdout().strip()
   endif
+endif
+if _commit == ''
+  _commit = 'unknown-commit'
 endif
 
 _py = find_program('python3', 'python', required : false)
@@ -209,7 +224,6 @@ if _hostname_prog.found()
   endif
 endif
 
-_sh = find_program('sh', required : false)
 _user = 'unknown'
 if _sh.found()
   _r = run_command(
@@ -252,5 +266,4 @@ _conf.set('fmliprelayvar', 'false')
 # Expose _conf to the root so it can set the with_* keys and then call
 # configure_file().  The root owns the final configure_file() call.
 metadata_conf = _conf
-
 

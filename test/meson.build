@@ -46,3 +46,14 @@ foreach t : tests
     timeout : 120,
   )
 endforeach
+
+python3 = find_program('python3', 'python', required : true)
+test(
+  'crest/gmc_capabilities',
+  python3,
+  args : [
+    files('test_gmc_capabilities.py'),
+    meson.project_build_root() / 'crest',
+    _commit,
+  ],
+)

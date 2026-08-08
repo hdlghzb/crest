@@ -42,6 +42,7 @@ srcs += files(
   'cleanup.f90',
   'cn.f90',
   'compress.f90',
+  'gmc_api.f90',
   'confparse.f90',
   'crest_pars.f90',
   'eval_timer.f90',

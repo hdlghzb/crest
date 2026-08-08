@@ -42,3 +42,13 @@ target_link_libraries(
 foreach(t IN LISTS tests)
   add_test("${PROJECT_NAME}/${t}" "${PROJECT_NAME}-tester" "${t}")
 endforeach()
+
+find_package(Python3 COMPONENTS Interpreter REQUIRED)
+add_test(
+  NAME "${PROJECT_NAME}/gmc_capabilities"
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/test_gmc_capabilities.py"
+    "$<TARGET_FILE:${PROJECT_NAME}-exe>"
+    "${CREST_BUILD_COMMIT}"
+)

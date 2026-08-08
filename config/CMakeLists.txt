@@ -82,14 +82,24 @@ set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} ${dialect}" PARENT_SCOPE)
 
 # Populate crest_metadata.fh
 set(version ${PROJECT_VERSION}${SOVERSION})
-execute_process(COMMAND git show -s --format=%h
-  RESULT_VARIABLE git_return
-  OUTPUT_VARIABLE commit
-  OUTPUT_STRIP_TRAILING_WHITESPACE
-)
-if(git_return)
+set(CREST_FORK_COMMIT "" CACHE STRING
+  "Build-time fork commit override for source archives without Git metadata")
+if(NOT CREST_FORK_COMMIT AND DEFINED ENV{CREST_FORK_COMMIT})
+  set(CREST_FORK_COMMIT "$ENV{CREST_FORK_COMMIT}")
+endif()
+set(commit "${CREST_FORK_COMMIT}")
+if(NOT commit)
+  execute_process(
+    COMMAND git -C "${PROJECT_SOURCE_DIR}" rev-parse --short=7 HEAD
+    RESULT_VARIABLE git_return
+    OUTPUT_VARIABLE commit
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+  )
+endif()
+if(NOT commit)
   set(commit "unknown-commit")
 endif()
+set(CREST_BUILD_COMMIT "${commit}" PARENT_SCOPE)
 string(TIMESTAMP date "%a, %d %B %H:%M:%S, %m/%d/%Y")
 set(author $ENV{USERNAME})
 execute_process(COMMAND hostname OUTPUT_VARIABLE HOSTNAME OUTPUT_STRIP_TRAILING_WHITESPACE)

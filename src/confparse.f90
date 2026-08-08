@@ -39,6 +39,7 @@ subroutine parseflags(env,arg,nra)
   use iso_fortran_env,wp => real64
   use crest_data
   use crest_calculator
+  use gmc_api, only : print_gmc_capabilities
   use iomod
   use utilities
   use strucrd
@@ -67,6 +68,13 @@ subroutine parseflags(env,arg,nra)
   character(len=:),allocatable :: arg1,arg2,arg3
   character(len=:),allocatable :: hybrid_quality,hybrid_workhorse
   character(len=4) :: hybrid_mode
+
+!>--- machine-readable GMC capability probe: no normal initialization or banner
+  do i = 1,nra
+    if ('--gmc-capabilities' == trim(arg(i))) then
+      call print_gmc_capabilities()
+    end if
+  end do
 
   allocate (xx(10),floats(3),strings(3))
   ctmp = ''
