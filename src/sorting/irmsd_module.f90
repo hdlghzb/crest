@@ -470,12 +470,23 @@ contains  !> MODULE PROCEDURES START HERE
 
       if (calc_g) then
         !> Gradient of the error of xyz1 w.r.t xyz2
-        do i = 1,nat
-          do j = 1,3
-            tmp(:) = matmul(transpose(U(:,:)),y(:,i))
-            grad(j,i) = ((x(j,i)-tmp(j))/error)*rnat
+        !> error is non-negative here; <= 0 is therefore an exact-zero test
+        !> without introducing an arbitrary near-zero cutoff.
+        if (error <= 0.0_wp) then
+          !> The RMSD norm has no unique derivative at zero.  Use its
+          !> zero subgradient; for the Gaussian RMSD bias this is also
+          !> the finite zero-force limit because dE/dRMSD is proportional
+          !> to RMSD.  The max(...,0) clamp above can otherwise expose 0/0
+          !> here through roundoff in the aligned residual.
+          grad(1:3,1:nat) = 0.0_wp
+        else
+          do i = 1,nat
+            do j = 1,3
+              tmp(:) = matmul(transpose(U(:,:)),y(:,i))
+              grad(j,i) = ((x(j,i)-tmp(j))/error)*rnat
+            end do
           end do
-        end do
+        end if
       end if
 
     end associate

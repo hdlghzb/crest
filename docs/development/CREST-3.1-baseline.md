@@ -258,16 +258,51 @@ xtb_dock.out: Successful; * finished run
 该 post-release development commit。它只作为 compatibility evidence，不作为
 默认 runtime pin：6.7.0 是稳定 release，严格 A/B 已通过，更易部署和复现。
 
+## Post-baseline hardening：CREST MTD zero-RMSD
+
+记录日期：2026-08-08。保留上面的 baseline 原始结果；本节记录后续的独立
+zero-RMSD numerical hardening。修复位于 post-baseline hardening commit，未进入
+GMC API 或其它 Phase 1 功能开发。
+
+根因是 `src/sorting/irmsd_module.f90:rmsd_core` 在 `error == 0` 时仍计算
+`(x-U^T y)/error`。当前 Gaussian RMSD bias 实际使用
+`E = k*exp(-alpha*RMSD**2)` 和 `dEdr = -2*alpha*E*RMSD`，因此 exact zero
+的 bias force 极限为零。由于这里的 `error` 非负，修复用 `error <= 0.0_wp` 识别
+exact zero 并返回零梯度，其它值保留原梯度公式；不引入任意 near-zero 阈值，所以
+正的 small/nonzero RMSD 仍走原路径，异常值也不会被 guard 静默吞掉。
+
+修改文件：
+
+- `src/sorting/irmsd_module.f90`：zero-RMSD gradient guard；
+- `test/test_irmsd.F90`：public `rmsd(...,gradient=...)` 的 identical、translation、
+  rotation、small-nonzero 和 finite-difference regression；
+- `docs/development/CREST-3.1-baseline.md`：本节记录。
+
+验证结果：
+
+- GNU Debug + FPE traps：`crest/irmsd` 新增 5 项与原有项目共 9 项 PASS，
+  `crest/metadynamics` 6/6 PASS；准确的 metadynamics test 已由 baseline 的
+  `SIGFPE` 变为 PASS；
+- GNU Debug CREST suite：14/15 PASS；唯一剩余失败是未修改的
+  `src/sorting/pbc_fingerprint.f90:117` `pbc_cregen` DGESVD/SIGFPE diagnostic；
+- CMake `RelWithDebInfo` + GCC/GFortran 14.2 + OpenBLAS 0.3.34：crest-only
+  CTest `15/15 PASS`；
+- NCI-iMTD runtime smoke：复用 water-trimer 输入，6 个 MTD 均正常完成，
+  `144/144` 结构优化成功，`crest_dynamics.trj.xyz` 非空且未发现 NaN/Inf，
+  最终 `CREST terminated normally`；
+- 未进行科学 benchmark；本次结果属于 unit verified、debug regression verified
+  和 runtime smoke verified。
+
 ## 未执行、限制与诊断边界
 
 - 独立 CREST `CMAKE_BUILD_TYPE=Release`：`NOT YET VALIDATED`；本轮尚未执行，
   `RelWithDebInfo` 不等同于 `Release`。
 - CREST `ninja install` 尚未执行，未覆盖生产 CREST。
-- Meson Debug 完整 183 项 suite 仍保留两个 SIGFPE 以及原始 timeout 诊断；不能
-  写成全套 Meson tests PASS。
-- 尚未开始 GMC API、zero-RMSD MTD hardening、energy raw/restraint/total、CREGEN
+- Meson Debug 完整 183 项 suite 的历史结果仍保留原始 timeout 诊断及
+  `pbc_cregen` SIGFPE；不能写成全套 Meson tests PASS。
+- 尚未开始 GMC API、energy raw/restraint/total、CREGEN
   raw ranking、constraint redesign 或 QCG final-vtight。
-- 本轮未修改 CREST 源码、第三方 submodule、gitlink 或 tracked `.gitignore`。
+- 本轮未修改第三方 submodule、gitlink 或 tracked `.gitignore`。
 
 ## 证据保留
 

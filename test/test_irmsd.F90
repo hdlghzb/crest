@@ -1,5 +1,6 @@
 module test_irmsd
   use testdrive,only:new_unittest,unittest_type,error_type,test_failed
+  use, intrinsic :: ieee_arithmetic,only:ieee_is_finite
   use crest_parameters,only:wp,aatoau
   use crest_testmol,only:get_testmol
   use strucrd,only:coord
@@ -11,6 +12,16 @@ module test_irmsd
 
   real(wp),parameter :: thr       = 1.0e-10_wp
   real(wp),parameter :: thr_loose = 1.0e-3_wp
+  !> The quaternion eigensolver leaves a sub-microbohr residual for a
+  !> rigid rotation; this is a test tolerance, not the zero-gradient guard.
+  real(wp),parameter :: rmsd_zero_thr = 1.0e-6_wp
+  real(wp),parameter :: rmsd_fd_step  = 1.0e-5_wp
+  real(wp),parameter :: rmsd_gthr     = 1.0e-6_wp
+
+  real(wp),parameter :: rot_z_90(3,3) = reshape([ &
+    & 0.0_wp,-1.0_wp,0.0_wp, &
+    & 1.0_wp, 0.0_wp,0.0_wp, &
+    & 0.0_wp, 0.0_wp,1.0_wp], [3,3])
 
 !========================================================================================!
 !> H2 diatomic geometries in Bohr (centered at origin)
@@ -153,6 +164,11 @@ contains  !> Unit tests for rmsd and irmsd
 !&<
     testsuite = [ &
       new_unittest("RMSD self comparison            ",test_rmsd_self),           &
+      new_unittest("RMSD identical gradient        ",test_rmsd_gradient_identical), &
+      new_unittest("RMSD translated gradient       ",test_rmsd_gradient_translation), &
+      new_unittest("RMSD rotated gradient          ",test_rmsd_gradient_rotation), &
+      new_unittest("RMSD small perturbation        ",test_rmsd_gradient_small), &
+      new_unittest("RMSD nonzero gradient (FD)     ",test_rmsd_gradient_fd), &
       new_unittest("RMSD H2 bond-stretch (known val)",test_rmsd_h2_bondstretch), &
       new_unittest("iRMSD self comparison           ",test_irmsd_self),          &
       new_unittest("iRMSD scrambled atom order      ",test_irmsd_scrambled)      &
@@ -174,6 +190,135 @@ contains  !> Unit tests for rmsd and irmsd
     if (abs(rmsdval) > 1.0e-6_wp) &
       call test_failed(error,'RMSD(mol,mol) should be 0, got: '//to_str(rmsdval))
   end subroutine test_rmsd_self
+
+!========================================================================================!
+
+  subroutine test_rmsd_gradient_identical(error)
+    type(error_type),allocatable,intent(out) :: error
+    type(coord) :: mol
+    real(wp),allocatable :: gradient(:,:)
+    real(wp) :: rmsdval
+
+    call get_testmol('caffeine',mol)
+    allocate (gradient(3,mol%nat),source=0.0_wp)
+    rmsdval = rmsd(mol,mol,gradient=gradient)
+    call check_gradient_state(error,rmsdval,gradient,rmsd_zero_thr,.true.,'identical')
+  end subroutine test_rmsd_gradient_identical
+
+!========================================================================================!
+
+  subroutine test_rmsd_gradient_translation(error)
+    type(error_type),allocatable,intent(out) :: error
+    type(coord) :: ref,mol
+    real(wp),allocatable :: gradient(:,:)
+    real(wp) :: rmsdval
+    integer :: i
+
+    call get_testmol('caffeine',ref)
+    mol = ref
+    do i = 1,mol%nat
+      mol%xyz(:,i) = mol%xyz(:,i)+[1.25_wp,-0.75_wp,0.50_wp]
+    end do
+    allocate (gradient(3,mol%nat),source=0.0_wp)
+    rmsdval = rmsd(ref,mol,gradient=gradient)
+    call check_gradient_state(error,rmsdval,gradient,rmsd_zero_thr,.false.,'translation')
+  end subroutine test_rmsd_gradient_translation
+
+!========================================================================================!
+
+  subroutine test_rmsd_gradient_rotation(error)
+    type(error_type),allocatable,intent(out) :: error
+    type(coord) :: ref,mol
+    real(wp),allocatable :: gradient(:,:)
+    real(wp) :: rmsdval
+
+    call get_testmol('caffeine',ref)
+    mol = ref
+    mol%xyz = matmul(rot_z_90,mol%xyz)
+    allocate (gradient(3,mol%nat),source=0.0_wp)
+    rmsdval = rmsd(ref,mol,gradient=gradient)
+    call check_gradient_state(error,rmsdval,gradient,rmsd_zero_thr,.false.,'rotation')
+  end subroutine test_rmsd_gradient_rotation
+
+!========================================================================================!
+
+  subroutine test_rmsd_gradient_small(error)
+    type(error_type),allocatable,intent(out) :: error
+    type(coord) :: ref,mol
+    real(wp),allocatable :: gradient(:,:)
+    real(wp) :: rmsdval
+
+    call get_testmol('caffeine',ref)
+    mol = ref
+    mol%xyz(1,1) = mol%xyz(1,1)+rmsd_fd_step
+    allocate (gradient(3,mol%nat),source=0.0_wp)
+    rmsdval = rmsd(ref,mol,gradient=gradient)
+    call check_gradient_state(error,rmsdval,gradient,1.0_wp,.false.,'small perturbation')
+    if (allocated(error)) return
+    if (rmsdval <= 0.0_wp) then
+      call test_failed(error,'small nonzero perturbation produced zero RMSD')
+    else if (maxval(abs(gradient)) <= 0.0_wp) then
+      call test_failed(error,'small nonzero perturbation produced zero gradient')
+    end if
+  end subroutine test_rmsd_gradient_small
+
+!========================================================================================!
+
+  subroutine test_rmsd_gradient_fd(error)
+    type(error_type),allocatable,intent(out) :: error
+    type(coord) :: ref,mol,tmp
+    real(wp),allocatable :: gradient(:,:)
+    real(wp) :: rmsdval,rmsdplus,rmsdminus,gfd
+    integer :: i,j
+
+    call get_testmol('caffeine',ref)
+    mol = ref
+    mol%xyz(:,1) = mol%xyz(:,1)+[0.15_wp,-0.10_wp,0.08_wp]
+    allocate (gradient(3,mol%nat),source=0.0_wp)
+    rmsdval = rmsd(ref,mol,gradient=gradient)
+    call check_gradient_state(error,rmsdval,gradient,1.0_wp,.false.,'normal perturbation')
+    if (allocated(error)) return
+    if (rmsdval <= rmsd_zero_thr) then
+      call test_failed(error,'normal perturbation did not produce nonzero RMSD')
+      return
+    end if
+
+    tmp = mol
+    do i = 1,mol%nat
+      do j = 1,3
+        tmp%xyz(j,i) = mol%xyz(j,i)+rmsd_fd_step
+        rmsdplus = rmsd(ref,tmp)
+        tmp%xyz(j,i) = mol%xyz(j,i)-rmsd_fd_step
+        rmsdminus = rmsd(ref,tmp)
+        gfd = (rmsdplus-rmsdminus)/(2.0_wp*rmsd_fd_step)
+        if (abs(gradient(j,i)-gfd) > rmsd_gthr) then
+          call test_failed(error,'normal RMSD gradient disagrees with finite difference')
+          return
+        end if
+        tmp%xyz(j,i) = mol%xyz(j,i)
+      end do
+    end do
+  end subroutine test_rmsd_gradient_fd
+
+!========================================================================================!
+
+  subroutine check_gradient_state(error,rmsdval,gradient,maxrmsd,require_zero,label)
+    type(error_type),allocatable,intent(out) :: error
+    real(wp),intent(in) :: rmsdval,gradient(:,:)
+    real(wp),intent(in) :: maxrmsd
+    logical,intent(in) :: require_zero
+    character(len=*),intent(in) :: label
+
+    if (.not.ieee_is_finite(rmsdval)) then
+      call test_failed(error,trim(label)//' RMSD is not finite')
+    else if (rmsdval < 0.0_wp .or. rmsdval > maxrmsd) then
+      call test_failed(error,trim(label)//' RMSD is outside expected range: '//to_str(rmsdval))
+    else if (.not.all(ieee_is_finite(gradient))) then
+      call test_failed(error,trim(label)//' RMSD gradient is not finite')
+    else if (require_zero .and. maxval(abs(gradient)) > thr) then
+      call test_failed(error,trim(label)//' RMSD gradient is not zero')
+    end if
+  end subroutine check_gradient_state
 
 !========================================================================================!
 
