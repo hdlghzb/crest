@@ -140,7 +140,7 @@ contains  !> MODULE PROCEDURES START HERE
 !********************************************************************
 !* Decide whether two periodic structures are identical.
 !* True iff ALL of the following hold:
-!*   |ΔE|  < ethr    (energy, Hartree)
+!*   |ΔErank|  < ethr    (ranking energy, Hartree)
 !*   |ΔΩ|  < volthr  (cell volume, Bohr³)
 !*   ΔΣ    < sigthr  (fingerprint difference)
 !********************************************************************
@@ -152,7 +152,7 @@ contains  !> MODULE PROCEDURES START HERE
     logical :: same
     real(wp) :: de,dvol,dsig
     same = .false.
-    de = abs(molA%energy-molB%energy)
+    de = abs(molA%ranking_energy()-molB%ranking_energy())
     if (de >= ethr) return
     dvol = abs(molA%cellvol()-molB%cellvol())
     if (dvol >= volthr) return

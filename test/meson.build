@@ -18,6 +18,7 @@ tests = [
   'external',
   'oniom',
   'gmc_energy',
+  'gmc_cregen',
 ]
 
 test_srcs = files(

@@ -17,6 +17,7 @@ set(
   "external"
   "oniom"
   "gmc_energy"
+  "gmc_cregen"
 )
 set(
   test-srcs

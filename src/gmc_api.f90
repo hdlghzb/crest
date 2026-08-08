@@ -38,7 +38,7 @@ contains
     write (output_unit,'(a,a,a)',advance='no') &
       trim(escaped_commit), '","upstream_base":"', trim(GMC_UPSTREAM_BASE)
     write (output_unit,'(a)') &
-      '","energy_components":true,"raw_energy_ranking":false,' // &
+      '","energy_components":true,"raw_energy_ranking":true,' // &
       '"qcg_single_crest_orchestration":true,"qcg_aiss_external_xtb":true,' // &
       '"qcg_aiss_xtb_validated_version":"' // GMC_AISS_XTB_VERSION // '"}'
     flush (output_unit)

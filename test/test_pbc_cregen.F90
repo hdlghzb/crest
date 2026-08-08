@@ -149,7 +149,7 @@ contains  !> Unit tests for periodic CREGEN
   end subroutine test_fp_mic
 
 !========================================================================================!
-!> a permuted + rotated + wrapped copy at the same energy/volume is a duplicate
+!> a permuted + rotated + wrapped copy within the raw-energy/volume window is a duplicate
   subroutine test_identical_dup(error)
     type(error_type),allocatable,intent(out) :: error
     type(coord) :: mol,molc
@@ -159,10 +159,11 @@ contains  !> Unit tests for periodic CREGEN
     real(wp),parameter :: ethr = 1.0e-4_wp
 
     call make_pbc_mol(mol)
-    mol%energy = -42.0_wp
+    call mol%set_energy_components(-42.0_wp,0.0_wp,-42.0_wp)
     nat = mol%nat
     molc = mol
-    molc%energy = mol%energy+0.5e-4_wp   !> within ethr
+    call molc%set_energy_components(-41.99995_wp,0.00195_wp,-41.998_wp)
+    !> raw difference is within ethr, while total difference is not
 !>--- rotate
     ang = -0.4_wp
     R = 0.0_wp

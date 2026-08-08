@@ -81,7 +81,7 @@ module quicksort_interface
       integer :: mask(nall)
     end subroutine maskinvert
 
-    recursive subroutine ensemble_qsort(nall,structures,first,last,mask)
+    recursive subroutine ensemble_qsort(nall,structures,first,last,mask,use_ranking_energy)
       use crest_parameters
       use strucrd,only:coord
       implicit none
@@ -89,6 +89,7 @@ module quicksort_interface
       type(coord),intent(inout) :: structures(nall)
       integer,intent(in) :: first,last
       integer,intent(inout),optional :: mask(nall)
+      logical,intent(in),optional :: use_ranking_energy
     end subroutine ensemble_qsort
 
   end interface
@@ -335,7 +336,7 @@ end subroutine maskinvert
 
 !========================================================================================!
 
-recursive subroutine ensemble_qsort(nall,structures,first,last,mask)
+recursive subroutine ensemble_qsort(nall,structures,first,last,mask,use_ranking_energy)
   use crest_parameters
   use strucrd,only:coord
   implicit none
@@ -343,11 +344,16 @@ recursive subroutine ensemble_qsort(nall,structures,first,last,mask)
   type(coord),intent(inout) :: structures(nall)
   integer,intent(in) :: first,last
   integer,intent(inout),optional :: mask(nall)
+  logical,intent(in),optional :: use_ranking_energy
 
   !> LOCAL
   type(coord),allocatable :: tmpmol
   integer :: i,j,mm,ii
   real(wp) :: ee
+  logical :: ranking
+
+  ranking = .false.
+  if (present(use_ranking_energy)) ranking = use_ranking_energy
 
   if (present(mask)) then
 !>--- sort according to a given mask (reference order)
@@ -369,21 +375,34 @@ recursive subroutine ensemble_qsort(nall,structures,first,last,mask)
       i = i+1
       j = j-1
     end do
-    if (first < i-1) call ensemble_qsort(nall,structures,first,i-1,mask)
-    if (j+1 < last) call ensemble_qsort(nall,structures,j+1,last,mask)
+    if (first < i-1) call ensemble_qsort(nall,structures,first,i-1,mask,ranking)
+    if (j+1 < last) call ensemble_qsort(nall,structures,j+1,last,mask,ranking)
 
   else
 !>--- standard, sort according to energy of structures
-    ee = structures((first+last)/2)%energy
+    if (ranking) then
+      ee = structures((first+last)/2)%ranking_energy()
+    else
+      ee = structures((first+last)/2)%energy
+    end if
     i = first
     j = last
     do
-      do while (structures(i)%energy < ee)
-        i = i+1
-      end do
-      do while (ee < structures(j)%energy)
-        j = j-1
-      end do
+      if (ranking) then
+        do while (structures(i)%ranking_energy() < ee)
+          i = i+1
+        end do
+        do while (ee < structures(j)%ranking_energy())
+          j = j-1
+        end do
+      else
+        do while (structures(i)%energy < ee)
+          i = i+1
+        end do
+        do while (ee < structures(j)%energy)
+          j = j-1
+        end do
+      end if
       if (i >= j) exit
       allocate (tmpmol)
       tmpmol = structures(i); structures(i) = structures(j); structures(j) = tmpmol
@@ -391,8 +410,9 @@ recursive subroutine ensemble_qsort(nall,structures,first,last,mask)
       i = i+1
       j = j-1
     end do
-    if (first < i-1) call ensemble_qsort(nall,structures,first,i-1)
-    if (j+1 < last) call ensemble_qsort(nall,structures,j+1,last)
+    if (first < i-1) call ensemble_qsort(nall,structures,first,i-1, &
+    &                                     use_ranking_energy=ranking)
+    if (j+1 < last) call ensemble_qsort(nall,structures,j+1,last, &
+    &                                     use_ranking_energy=ranking)
   end if
 end subroutine ensemble_qsort
-

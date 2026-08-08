@@ -248,7 +248,7 @@ subroutine newcregen(env,quickset,infile,structurelist)
     call cregen_conffile(env,cname,structures,ng,degen)
   end if
   if (saveelow) then
-    env%elowest = structures(1)%energy
+    env%elowest = structures(1)%ranking_energy()
 !>-- and update reference geometry (in Bohr)
     env%ref%xyz = structures(1)%xyz
   end if
@@ -262,7 +262,7 @@ subroutine newcregen(env,quickset,infile,structurelist)
   if (pr2.or.pr3.or.pr4) then
     allocate (er(nall))
     do ii = 1,nall
-      er(ii) = structures(ii)%energy
+      er(ii) = structures(ii)%ranking_energy()
     end do
   end if
 
@@ -669,6 +669,7 @@ subroutine cregen_discardbroken(ch,env,topocheck,structures,newnall)
   llan = nall
   do ii = 1,nall
     mol => structures(ii)
+    !> This is only a validity/sentinel check, not a scientific ranking use.
     erj = mol%energy
     !if (substruc) then
     !  !...
@@ -896,14 +897,14 @@ subroutine cregen_esort(ch,structures,nallout,ewin)
 
   nall = size(structures,1)
   nallout = nall
-  call ensemble_qsort(nall,structures,1,nall)
+  call ensemble_qsort(nall,structures,1,nall,use_ranking_energy=.true.)
 
   !>-- determine cut-off of energies (optional)
   if (present(ewin)) then
     write (ch,'(80("*"))')
     allocate (energies(nall))
     do ii = 1,nall
-      energies(ii) = structures(ii)%energy
+      energies(ii) = structures(ii)%ranking_energy()
     end do
 
     if (ewin < 9999.9_wp) then
@@ -937,7 +938,7 @@ subroutine cregen_esort(ch,structures,nallout,ewin)
     else
       nallout = nall
     end if
-    write (ch,'(" reference state Etot",t32,":",2x,es14.6)') energies(1)
+    write (ch,'(" reference state Erank",t32,":",2x,es14.6)') energies(1)
     deallocate (energies)
   end if
 
@@ -1116,9 +1117,9 @@ subroutine cregen_CRE_new(env,nall,structures,groups,rthresh,ethr,bthr, &
   !> conveniently, we can use the energy threshold to set a better
   !> comparison table, as in the original CREGEN routine.
   do ii = 1,nall
-    eii = structures(ii)%energy
+    eii = structures(ii)%ranking_energy()
     do jj = 1,ii
-      ediff = abs(eii-structures(jj)%energy)
+      ediff = abs(eii-structures(jj)%ranking_energy())
       if (ediff <= ETHR) then
         prune_table(ii) = jj
         exit
@@ -1476,9 +1477,9 @@ subroutine cregen_CRE_periodic(env,nall,structures,groups,rthresh,ethr,printlvl,
 !>--- energy-based comparison window (structures are energy-sorted already)
   allocate (prune_table(nall),source=1)
   do ii = 1,nall
-    eii = structures(ii)%energy
+    eii = structures(ii)%ranking_energy()
     do jj = 1,ii
-      ediff = abs(eii-structures(jj)%energy)
+      ediff = abs(eii-structures(jj)%ranking_energy())
       if (ediff <= ETHR) then
         prune_table(ii) = jj
         exit
@@ -1861,7 +1862,7 @@ subroutine cregen_irmsd_sort(env,nall,structures,groups,allcanon,printlvl)
 !>--- sorting by energy
   write (stdout,'(a)',advance='no') 'CREGEN> Sorting ensemble by energy ... '
   flush (stdout)
-  call ensemble_qsort(nall,structures,1,nall)
+  call ensemble_qsort(nall,structures,1,nall,use_ranking_energy=.true.)
   write (stdout,'(a)') 'done.'
 
 !>--- Set up atom identities (either for all, or just the first structure)
@@ -1961,7 +1962,7 @@ subroutine cregen_irmsd_sort(env,nall,structures,groups,allcanon,printlvl)
     do jj = ii+1,nall
       cc = omp_get_thread_num()+1
       if (groups(jj) .ne. 0) cycle
-      ediff = abs(structures(ii)%energy-structures(jj)%energy)
+      ediff = abs(structures(ii)%ranking_energy()-structures(jj)%ranking_energy())
       if (ediff > ETHR) cycle
       if (individual_IDs) then
         rcaches(cc)%rank(1:nat,1) = sorters(ii)%rank(1:nat)
@@ -2011,7 +2012,7 @@ subroutine cregen_irmsd_sort(env,nall,structures,groups,allcanon,printlvl)
   call cregen_groupinfo(nall,ng,group,degen)
   allocate (er(nall))
   do ii = 1,nall
-    er(ii) = structures_new(ii)%energy
+    er(ii) = structures_new(ii)%ranking_energy()
     structures(ii) = structures_new(ii)
   end do
   if (prlvl > 0) then
@@ -2474,9 +2475,9 @@ subroutine cregen_file_wr(env,fname,structures)
 
   nall = size(structures,1)
   allocate (er(nall),erel(nall),p(nall))!,origin(nall))
-  eref = structures(1)%energy
+  eref = structures(1)%ranking_energy()
   do ii = 1,nall
-    er(ii) = structures(ii)%energy
+    er(ii) = structures(ii)%ranking_energy()
     erel(ii) = (er(ii)-eref)*autokcal
     !if (env%trackorigin) then
     !  call getorigin(comments(i),origin(i))
@@ -2527,7 +2528,7 @@ subroutine cregen_conffile(env,cname,structures,ng,degen)
   nall = size(structures,1)
   allocate (er(nall))
   do ii = 1,nall
-    er(ii) = structures(ii)%energy
+    er(ii) = structures(ii)%ranking_energy()
     if (allocated(structures(ii)%comment)) &
     &  deallocate (structures(ii)%comment)
   end do
@@ -2768,7 +2769,7 @@ subroutine cregen_pr2(ch,env,nall,ng,degen,er)
   !>-- really long energy list
   write (och,'(80("*"))')
   write (och,'(1x,a8,1x,a8,(1x,a16),(1x,a8),(1x,a12),1x,a9,1x,a5)') &
-  &      '  ','ΔE','Etot','weight','conf.weight','conformer',''
+  &      '  ','ΔE','Erank','weight','conf.weight','conformer',''
   write (och,'(a8,1x,a8,(1x,a16),(1x,a8),(1x,a12),1x,a9,1x,a5,1x,a6)') &
   &        'id ','kcal/mol','hartree','p(i)','p(group)','group','degen','origin'
   write (och,'(4x,4("-"),1x,8("-"),(1x,16("-")),(1x,8("-")),(1x,12("-")),1x,9("-"),1x,5("-"),1x,6("-"))')
@@ -2776,7 +2777,7 @@ subroutine cregen_pr2(ch,env,nall,ng,degen,er)
     call remove('cregen.full')
     open (newunit=och2,file='cregen.full',status='replace')
     write (och2,'(1x,a8,1x,a8,(1x,a16),(1x,a8),(1x,a12),1x,a9,1x,a5)') &
-    &      '  ','ΔE','Etot','weight','conf.weight','conformer',''
+    &      '  ','ΔE','Erank','weight','conf.weight','conformer',''
     write (och2,'(a8,1x,a8,(1x,a16),(1x,a8),(1x,a12),1x,a9,1x,a5,1x,a6)') &
     &        'id ','kcal/mol','hartree','p(i)','p(group)','group','degen','origin'
     write (och2,'(4x,4("-"),1x,8("-"),(1x,16("-")),(1x,8("-")),(1x,12("-")),1x,9("-"),1x,5("-"),1x,6("-"))')
@@ -2846,7 +2847,7 @@ subroutine cregen_pr2(ch,env,nall,ng,degen,er)
   write (och,'(35("-"))')
   write (och,'(" Number of groups & total",t42,":",2x, i0,", ",i0)') ng,nall
   write (och,'(" Temperature used for populations",t42,":",2x,F9.2," K")') T
-  write (och,'(" Energy of lowest structure",t42,":",2x,es14.6)') eref
+  write (och,'(" Ranking energy of lowest structure",t42,":",2x,es14.6)') eref
   !>---- elow printout in between routines
   if (.not.env%confgo) then
     write (stdout,'("CREGEN> E lowest :",f20.10,a)') eref,' Ha'
@@ -2941,7 +2942,7 @@ subroutine cregen_pr3(ch,infile,nall,er)
   write (ch,'(a)') '====================================================='
   write (ch,'(a,a,a)') ' written to file <',trim(infile),'>'
   write (ch,*)
-  write (ch,'(a10,4x,a15,a25)') 'structure','ΔE(kcal/mol)','Etot(Eh)'
+  write (ch,'(a10,4x,a15,a25)') 'structure','ΔE(kcal/mol)','Erank(Eh)'
   eref = minval(er,1)
   !write (ch,'(''   structure    ΔE(kcal/mol)    Etot(Eh)'')')
   do i = 1,nall

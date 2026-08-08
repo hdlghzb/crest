@@ -14,7 +14,7 @@ EXPECTED = {
     "crest_version": "3.1.0",
     "upstream_base": "bd27e348ec001e27eab3177586843e8d86f66dc8",
     "energy_components": True,
-    "raw_energy_ranking": False,
+    "raw_energy_ranking": True,
     "qcg_single_crest_orchestration": True,
     "qcg_aiss_external_xtb": True,
     "qcg_aiss_xtb_validated_version": "6.7.0",
