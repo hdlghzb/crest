@@ -15,6 +15,8 @@ Branch: glomincluster/crest-3.1-api-v1
 A1 source commit: b64768274d0f6861ab07e14bd46ec901652a7cee
 A2 source commit: 5b63f63ef1e75cf8e9f4513517a3c930b656592b
 A3 source commit: 96a9823f4e50d674c49bd91c854bd42ccffe25fe
+C0 debug-FPE fix commit: 3a8de634417b6bd4222cdd9d6960ed5a936e2613
+Accepted Phase 2A source HEAD: 3a8de634417b6bd4222cdd9d6960ed5a936e2613
 Pinned Phase 1 base: bd27e348ec001e27eab3177586843e8d86f66dc8
 ```
 
@@ -116,50 +118,88 @@ checkpoint runtime checks used the explicit GCC14/OpenBLAS library path because
 the system `libgfortran` does not provide `GFORTRAN_10`; the post-A3 QCG runtime
 gate is recorded in the closure section below.
 
+## C0 reopen and Debug FPE fix
+
+The earlier `0aedad1` documentation closeout was reopened after the Phase 2C
+C0 review found that Meson Debug had reported `gmc_cregen` as `8/9` with
+`SIGFPE`, although the Phase 2A plan only allowed the separate `pbc_cregen`
+diagnostic. The independent tester reproduced deterministic `FPE_FLTDIV` at
+`src/sorting/pbc_fingerprint.f90:117`, inside the OpenBLAS `IEEECK` probe called
+by `DGESVD`; the fixture matrix itself was finite. An independent Phase 1
+accepted-source A/B reproduced the same failure, so this was not introduced by
+A1/A2/A3, but it still blocked the stated Debug gate.
+
+Commit `3a8de63` adds only a Fortran `ieeeck_` ABI-compatible entry point in
+`src/sorting/pbc_fingerprint.f90`. It answers the OpenBLAS IEEE capability
+probe with `ieee_arithmetic` inquiries instead of deliberate exceptional
+arithmetic. The global Debug FPE traps remain enabled; no test was skipped,
+xfail-listed, or removed, and no scientific CREGEN ranking/filtering rule was
+changed.
+
+The production-source change invalidated all earlier `96a9823` binary
+acceptance evidence. The complete acceptance matrix below was rebuilt or
+rerun against `3a8de63`.
+
 ## Phase 2A acceptance closure
 
 ### Standalone equivalence
 
-The A3 binary was compared with the standalone `optimize_geometry` path using
+The clean `3a8de63` binary was compared with the standalone
+`optimize_geometry` path using
 the same 15-atom propanol-water fixture, GFN2, `vtight`, one thread, and the
 same final-only restraint file where applicable. The verifier is
-`/home/zbhu/GloMinCluster/crest-build/phase2a-standalone-equivalence-20260809/verify_standalone_equivalence.py`;
-its output is `standalone-equivalence.json`.
+`/home/zbhu/GloMinCluster/crest-build/phase2a-c0-fix-runtime-20260809/verify_standalone_equivalence.py`;
+its output is `phase2a-c0-fix-runtime-20260809/standalone-equivalence.json`.
 
 | Case | Translation-aligned RMSD (A) | Max component-energy difference (Eh) | d(1,2) difference (A) |
 |---|---:|---:|---:|
-| vtight, no final restraint | 1.22e-6 | 1.00e-10 | 1.39e-8 |
-| vtight + distance restraint | 5.52e-3 | 2.22e-7 | 6.57e-6 |
+| vtight, no final restraint | 4.43e-8 | 0.00e+00 | 1.18e-9 |
+| vtight + distance restraint | 2.15e-9 | 0.00e+00 | 1.19e-11 |
 
 Both cases passed the verifier tolerances of `0.01 A`, `2e-6 Eh`, and
-`2e-4 A`. All QCG and standalone logs report `commit (96a9823)`.
+`2e-4 A`. All QCG and standalone logs report `commit (3a8de63)`.
 
 ### Clean CMake Release and Meson Release
 
 | Check | Result | Evidence |
 |---|---|---|
-| Clean CMake Release configure/build | PASS, 1602/1602 | `phase2a-a3-clean-release-20260809/configure.log`, `build.log` |
-| CMake crest-only CTest | PASS, 21/21 | `crest-only-ctest.log` |
-| CMake full CTest | PASS, 74/74 | `full-ctest.log` |
-| Clean CMake capability/provenance | PASS | `capabilities.json`, `crest_metadata.fh` |
-| CMake dynamic linking | PASS | `ldd.txt`, GCC14/OpenBLAS paths, no missing libraries |
-| Meson Release configure/build | PASS, 958/958 | `phase2a-a3-meson-release-20260809/setup.log`, `build.log` |
-| Meson CREST suite | PASS, 21/21 | `crest-suite.log` |
-| Meson capability/provenance | PASS | `capabilities.json`, `crest_metadata.fh` |
-| Meson dynamic linking | PASS | `ldd.txt`, GCC14/OpenBLAS paths, no missing libraries |
+| Clean CMake Release configure/build | PASS, 1602/1602 | `phase2a-c0-fix-cmake-configure-20260809.log`, `phase2a-c0-fix-cmake-build-20260809.log` |
+| CMake crest-only CTest | PASS, 21/21 | `phase2a-c0-fix-cmake-crest-ctest-20260809.log` |
+| CMake full CTest | PASS, 74/74 | `phase2a-c0-fix-cmake-full-ctest-20260809.log` |
+| Clean CMake capability/provenance | PASS | `phase2a-c0-fix-cmake-capabilities-20260809.json`, build `crest_metadata.fh` |
+| CMake dynamic linking | PASS | `phase2a-c0-fix-cmake-ldd-20260809.txt`, GCC14/OpenBLAS paths, no missing libraries |
+| Meson Release configure/build | PASS, 958/958 | `phase2a-c0-fix-meson-release-gcc14-configure-20260809.log`, build log |
+| Meson CREST suite | PASS, 21/21 | `phase2a-c0-fix-meson-release-gcc14-crest-suite-20260809.log` |
+| Meson Debug targeted | PASS, 9/9 | `phase2a-c0-fix-meson-debug-targeted-20260809.log` |
+| Meson Debug `pbc_cregen` diagnostic | PASS, 1/1 | `phase2a-c0-fix-meson-debug-pbc-20260809.log` |
+| Meson capability/provenance | PASS | C0 fix capability JSON files, `fork_commit=3a8de63` |
+| Meson dynamic linking | PASS | C0 fix `ldd` files, GCC14/OpenBLAS paths, no missing libraries |
 
-Both build systems report API v1, `fork_commit=96a9823`, all Phase 1 fields,
-and the A3 final capability fields. A broader Meson invocation over all 189
+Both build systems report API v1, `fork_commit=3a8de63`, all Phase 1 fields,
+and the A3 final capability fields. The three C0-fix binaries define `ieeeck_`
+and the Debug compile commands retain `-ffpe-trap=invalid,zero,overflow`. A
+broader Meson invocation over all 189
 tests was not used as the CREST acceptance gate: it reached the unrelated
 third-party `tblite:gfn1-xtb` 30-second test timeout. The project-scoped
 `crest` suite passed independently and completely.
+
+The C0-fix binary SHA256 identities are recorded in
+`phase2a-c0-fix-cmake-sha256-20260809.txt`,
+`phase2a-c0-fix-meson-release-gcc14-sha256-20260809.txt`, and
+`phase2a-c0-fix-meson-debug-sha256-20260809.txt`:
+
+```text
+CMake Release:  a8a1a39ebbacf255080668deac767eb675e5d77397a47d9c700cc2f31375b681
+Meson Release: 1abfc7212cb2e9a3474c1f0b485d1cb47a5ec25b7a7c25f873c3aeffddc0fa80
+Meson Debug:   9ac11092b773883bf378c04e42caeb64b95cdabc7a358b621b8e0e2c013f1ca2
+```
 
 ### Official xTB 6.7.0 QCG runtime
 
 The clean CMake Release binary was run with
 `/share/software/xtb/6.7.0/bin/xtb`, GCC/GFortran 14.2.0 and OpenBLAS 0.3.34
 library paths, and one thread. Evidence root:
-`/home/zbhu/GloMinCluster/crest-build/phase2a-qcg-runtime-20260809`.
+`/home/zbhu/GloMinCluster/crest-build/phase2a-c0-fix-runtime-20260809`.
 
 | Case | Result | Runtime evidence |
 |---|---|---|
@@ -167,16 +207,20 @@ library paths, and one thread. Evidence root:
 | `vtight` without restraint | PASS | final-only opt level parsed, exit 0 |
 | `vtight` + distance restraint | PASS | final-only constraint file parsed, exit 0 |
 
-Each case reports CREST `96a9823`, xTB-docking `6.7.0 (08769fc)`, two
-successful docking records, one finished-run marker, complete 15-atom
+Each case reports CREST `3a8de63`, and its retained `qcg_tmp/tmp_grow/xtb_dock.out`
+reports the actual xTB-docking `6.7.0 (08769fc)`, two successful docking
+records, one finished-run marker, complete 15-atom
 `best.xyz` and `best_after_gen.xyz`, `grow/cluster_optimized.xyz`, growth
-completion, and normal CREST termination. The compact validation record is
-`phase2a-qcg-runtime-20260809/validation.txt`.
+completion, and normal CREST termination. The static CREST banner's
+`tested 6.7.1 (902b313)` text was not used as runtime-version evidence.
+The compact joint record is
+`phase2a-c0-fix-runtime-20260809/validation.txt`.
 
 Therefore:
 
 ```text
 Phase 2A = CLOSED
-closure = standalone equivalence, clean CMake/Meson Release gates, and all three official xTB 6.7.0 QCG runtime gates passed
+accepted_source = 3a8de634417b6bd4222cdd9d6960ed5a936e2613
+closure = C0 Debug FPE fix, standalone equivalence, clean CMake/Meson Release gates, Meson Debug gates, and all three official xTB 6.7.0 QCG runtime gates passed
 non-goals = scientific benchmark/global-minimum validation, formal distribution release, and FeCN6 acceptance
 ```

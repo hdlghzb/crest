@@ -86,6 +86,8 @@ The Phase 2A implementation is split into independently reviewable commits:
 - A2 `5b63f63`: numeric distance/angle/dihedral final-only restraints;
 - A3 `96a9823f4e50d674c49bd91c854bd42ccffe25fe`: capability fields and test
   contract.
+- C0 `3a8de634417b6bd4222cdd9d6960ed5a936e2613`: minimal `ieeeck_` ABI
+  compatibility fix for OpenBLAS IEEE probing under Debug FPE traps.
 
 A3 preserves API v1 and all Phase 1 fields. The commit is pushed to
 `origin/glomincluster/crest-3.1-api-v1`. A fresh post-A3 CMake RelWithDebInfo
@@ -106,25 +108,63 @@ phase2a-a3-capabilities-20260809.json
 This was the A3 code/build/API checkpoint. The subsequent Phase 2A acceptance
 gates are recorded below.
 
+### C0 reopen and fix
+
+The `0aedad1` documentation closeout was reopened after C0 found that Meson
+Debug had reported `gmc_cregen` as `8/9` with `SIGFPE`, while the Phase 2A plan
+only allowed the separate `pbc_cregen` diagnostic. Independent reproduction
+showed deterministic `FPE_FLTDIV` at
+`src/sorting/pbc_fingerprint.f90:117`, inside OpenBLAS `IEEECK` called by
+`DGESVD`; Phase 1 accepted-source A/B reproduced the same behavior, so this
+was not an A1/A2/A3 regression.
+
+Commit `3a8de63` adds a single `bind(C,name='ieeeck_')` entry point in
+`src/sorting/pbc_fingerprint.f90`. It uses `ieee_arithmetic` inquiries rather
+than deliberate exceptional arithmetic, leaving the global Debug traps active.
+No test exception list, scientific CREGEN ranking/filtering rule, or test
+assertion was changed. The production-source change invalidated all earlier
+`96a9823` binary acceptance evidence; the closure below uses only `3a8de63`
+builds and runtime artifacts.
+
 ## Phase 2A acceptance closure
 
 The final acceptance evidence is retained under
 `/home/zbhu/GloMinCluster/crest-build`:
 
 - standalone QCG/standalone optimizer equivalence:
-  `phase2a-standalone-equivalence-20260809/standalone-equivalence.json`;
-- clean CMake Release: `phase2a-a3-clean-release-20260809`;
-- clean Meson Release: `phase2a-a3-meson-release-20260809`;
+  `phase2a-c0-fix-runtime-20260809/standalone-equivalence.json`;
+- clean CMake Release: `phase2a-c0-fix-cmake-release-20260809`;
+- clean Meson Release: `phase2a-c0-fix-meson-release-gcc14-20260809`;
+- Meson Debug targeted and `pbc_cregen` diagnostic:
+  `phase2a-c0-fix-meson-debug-gcc14-20260809`;
 - official xTB 6.7.0 QCG runtime matrix:
-  `phase2a-qcg-runtime-20260809/validation.txt`.
+  `phase2a-c0-fix-runtime-20260809`.
 
 The standalone matrix passed for `vtight` with and without a final distance
 restraint. CMake Release built `1602/1602`, passed crest-only `21/21` and full
 CTest `74/74`; Meson Release built `958/958` and passed the project `crest`
-suite `21/21`. Both clean binaries report API v1 and `fork_commit=96a9823`,
-and their GCC14/OpenBLAS dynamic-link checks passed. The post-A3 QCG matrix
-passed baseline, `vtight` without restraints, and `vtight` with a numeric
-distance restraint using official xTB `6.7.0 (08769fc)`.
+suite `21/21`. Meson Debug targeted passed `9/9`, including `gmc_cregen`, and
+the formerly diagnostic `pbc_cregen` passed `1/1`. All C0-fix binaries report
+API v1 and `fork_commit=3a8de63`; their GCC14/OpenBLAS dynamic-link checks
+passed and each defines `ieeeck_`. Debug compile commands retain
+`-ffpe-trap=invalid,zero,overflow`.
+
+The C0-fix binary SHA256 identities are:
+
+```text
+CMake Release:  a8a1a39ebbacf255080668deac767eb675e5d77397a47d9c700cc2f31375b681
+Meson Release: 1abfc7212cb2e9a3474c1f0b485d1cb47a5ec25b7a7c25f873c3aeffddc0fa80
+Meson Debug:   9ac11092b773883bf378c04e42caeb64b95cdabc7a358b621b8e0e2c013f1ca2
+```
+
+The post-C0 QCG matrix passed baseline, `vtight` without restraints, and
+`vtight` with a numeric distance restraint. Each retained `xtb_dock.out`
+reports the actual official xTB-docking `6.7.0 (08769fc)`, two successful
+docking records, one finished-run marker, complete 15-atom `best.xyz` and
+`best_after_gen.xyz`, `cluster_optimized.xyz`, growth completion, and normal
+CREST termination. The static CREST banner's `tested 6.7.1 (902b313)` text was
+not used as runtime-version evidence. The compact joint record is
+`phase2a-c0-fix-runtime-20260809/validation.txt`.
 
 This closes Phase 2A's code/runtime acceptance scope. The 189-test aggregate
 Meson invocation is not a Phase 2A gate; it encountered the independent
@@ -237,9 +277,10 @@ The final runtime evidence is retained under
 `/home/zbhu/GloMinCluster/crest-build/runtime-phase1-final-clean-acceptance-20260809`.
 All GFN2, mdopt, NCI-iMTD, hybrid, verifier, and QCG records reference the
 same final binary SHA256 listed above. Meson Debug targeted tests passed `6/6`;
-the direct Meson `pbc_cregen` SIGFPE at
-`src/sorting/pbc_fingerprint.f90:117` remains the known non-blocking Debug
-diagnostic, while CMake Release `pbc_cregen` passed.
+the historical direct Meson `pbc_cregen` SIGFPE at
+`src/sorting/pbc_fingerprint.f90:117` was subsequently addressed by the Phase
+2A C0 fix `3a8de63`; the new C0 Debug `pbc_cregen` and `gmc_cregen` gates both
+pass with the global FPE traps still enabled.
 
 These are executable runtime-smoke results, not scientific benchmarks.
 Constraint redesign beyond Phase 2A, MTD A/B, formal distribution release, and
