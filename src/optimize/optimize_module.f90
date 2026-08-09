@@ -212,6 +212,16 @@ contains  !> MODULE PROCEDURES START HERE
       !write(stdout,*) "Energy post correction", etot
     endif
 
+    !> Some optimizers return the final geometry together with an energy
+    !> whose last calculator evaluation is not guaranteed to be attached to
+    !> that geometry.  Refresh the active method once so the component
+    !> metadata describes the returned final structure.
+    if (iostatus == 0 .and. .not.calc%do_HR .and. &
+        & .not.calc%deform_opt_hess .and. .not.calc%g_sampling) then
+      call engrad(molnew,calc,etot,grd,io)
+      if (io /= 0) iostatus = io
+    end if
+
     if (iostatus /= 0) then
       call molnew%invalidate_energy_components()
     else if (molnew%energy_components_valid) then

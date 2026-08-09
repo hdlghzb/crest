@@ -2,6 +2,7 @@ module test_optimization
   use testdrive,only:new_unittest,unittest_type,error_type,check,test_failed
   use crest_parameters
   use crest_calculator
+  use crest_data,only:refine
   use strucrd
   use crest_testmol
   use optimize_module
@@ -31,7 +32,8 @@ contains  !> Unit tests for using geometry optimization routines in CREST
     new_unittest("optimization (ANCOPT)         ",test_ancopt), &
     new_unittest("optimization (ANCOPT,sspevx)  ",test_ancoptsmall), &
     new_unittest("optimization (grad. descent)  ",test_gradientdescent), &
-    new_unittest("optimization (RFO)            ",test_rfo) &
+    new_unittest("optimization (RFO)            ",test_rfo), &
+    new_unittest("hybrid optimization components ",test_hybrid_components) &
 #else
     new_unittest("Compiled gfnff subproject",test_compiled_gfnff,should_fail=.true.) &
 #endif
@@ -196,6 +198,54 @@ contains  !> Unit tests for using geometry optimization routines in CREST
 
     deallocate (grad)
   end subroutine test_rfo
+
+!========================================================================================!
+
+  subroutine test_hybrid_components(error)
+    type(error_type),allocatable,intent(out) :: error
+    type(calcdata) :: hybrid,reference
+    type(calculation_settings) :: workhorse,quality,reference_settings
+    type(coord) :: mol,molnew,reference_mol
+    real(wp) :: energy,reference_energy
+    real(wp),allocatable :: grad(:,:),reference_grad(:,:)
+    integer :: io
+    logical :: wr,pr
+
+    call workhorse%create('gfnff')
+    workhorse%refine_lvl = refine%non
+    call workhorse%autocomplete(1)
+    call hybrid%add(workhorse)
+    call quality%create('gfn2')
+    quality%refine_lvl = refine%post_opt
+    call quality%autocomplete(2)
+    call hybrid%add(quality)
+    hybrid%refine_stage = refine%post_opt
+
+    call get_testmol('methane',mol)
+    allocate (grad(3,mol%nat),source=0.0_wp)
+    wr = .false.
+    pr = .false.
+    call optimize_geometry(mol,molnew,hybrid,energy,grad,pr,wr,io)
+    call check(error,io,0)
+    if (allocated(error)) return
+    if (.not.molnew%energy_components_valid) then
+      call test_failed(error,'hybrid quality optimization lost energy components')
+      return
+    end if
+    call check(error,molnew%energy_total,energy,thr=1.0e-10_wp)
+    if (allocated(error)) return
+
+    call reference_settings%create('gfn2')
+    call reference%add(reference_settings)
+    reference_mol = molnew
+    allocate (reference_grad(3,reference_mol%nat),source=0.0_wp)
+    call engrad(reference_mol,reference,reference_energy,reference_grad,io)
+    call check(error,io,0)
+    if (allocated(error)) return
+    call check(error,molnew%energy_raw,reference_energy,thr=1.0e-10_wp)
+
+    deallocate (grad,reference_grad)
+  end subroutine test_hybrid_components
 
 !========================================================================================!
 !========================================================================================!
