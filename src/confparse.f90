@@ -2900,6 +2900,20 @@ subroutine parseflags(env,arg,nra)
         processedarg(i) = .true.
         env%final_gfn2_opt = .false.
 
+      case ('-qcg-final-cinp')
+        processedarg(i) = .true.
+        if (i+1 .gt. nra .or. len_trim(arg1) == 0 .or. arg1(1:1) == '-') then
+          call parseflags_missing(trim(arg(i)))
+          call creststop(status_args)
+        end if
+        if (arg1(1:1) == '/') then
+          env%qcg_final_cinp = trim(arg1)
+        else
+          env%qcg_final_cinp = trim(env%homedir)//'/'//trim(arg1)
+        end if
+        processedarg(i+1) = .true.
+        write (stdout,'(2x,a,1x,a)') trim(arg(i)),'final-only constraint file '//trim(env%qcg_final_cinp)
+
       case ('-qcg-final-opt-level')
         processedarg(i) = .true.
         if (i+1 .gt. nra .or. len_trim(arg1) == 0) then

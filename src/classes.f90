@@ -515,6 +515,7 @@ module crest_data
     character(len=5) :: docking_qcg_flag = '--qcg'
     real(wp)          :: qcg_final_optlev = 0.0_wp !> QCG grow-final-only optimizer level
     logical           :: qcg_final_optlev_set = .false. !> user supplied final-only level
+    character(len=:),allocatable :: qcg_final_cinp !> QCG grow-final-only constraint file
 
     !>--- clustering data
     integer  :: maxcluster = 0  !> maximum number of clusters to be generated
@@ -1355,6 +1356,8 @@ contains  !> MODULE PROCEDURES START HERE
     self%docking_qcg_flag = src%docking_qcg_flag
     self%qcg_final_optlev = src%qcg_final_optlev
     self%qcg_final_optlev_set = src%qcg_final_optlev_set
+    if (allocated(self%qcg_final_cinp)) deallocate (self%qcg_final_cinp)
+    if (allocated(src%qcg_final_cinp)) self%qcg_final_cinp = src%qcg_final_cinp
     if (allocated(src%directed_file))   self%directed_file   = src%directed_file
     if (allocated(src%directed_list))   self%directed_list   = src%directed_list
     if (allocated(src%directed_number)) self%directed_number = src%directed_number

@@ -20,6 +20,7 @@ tests = [
   'gmc_energy',
   'gmc_cregen',
   'gmc_hybrid',
+  'gmc_qcg_final_constraints',
 ]
 
 test_srcs = files(

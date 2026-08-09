@@ -175,6 +175,7 @@ subroutine qcg_final_opt_internal(env,solu,clus,iostatus)
   use crest_parameters
   use crest_data
   use crest_calculator
+  use parse_xtbinput,only:parse_qcg_final_constraints
   use qcg_coord_type
   use strucrd
   use optimize_module
@@ -191,6 +192,7 @@ subroutine qcg_final_opt_internal(env,solu,clus,iostatus)
   real(wp) :: energy
   character(len=20) :: gfnver_tmp
   integer :: T,Tn,io
+  integer :: constraint_status
 
   ! `solu` is retained in the interface to make the grow-final call boundary explicit.
   iostatus = 1
@@ -207,6 +209,17 @@ subroutine qcg_final_opt_internal(env,solu,clus,iostatus)
   calc%nfreeze = 0
   if (allocated(calc%cons)) deallocate (calc%cons)
   calc%nconstraints = 0
+
+  if (allocated(env%qcg_final_cinp)) then
+    call parse_qcg_final_constraints(calc,molin,env%qcg_final_cinp,solu%nat,constraint_status)
+    if (constraint_status /= 0) then
+      write (stdout,'(1x,a)') 'QCG final constraint input rejected; optimization was not started.'
+      deallocate (grad)
+      env%gfnver = gfnver_tmp
+      iostatus = constraint_status
+      return
+    end if
+  end if
 
   calc%optlev = nint(env%optlev)
   if (env%qcg_final_optlev_set) calc%optlev = nint(env%qcg_final_optlev)

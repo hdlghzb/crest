@@ -19,6 +19,7 @@ set(
   "gmc_energy"
   "gmc_cregen"
   "gmc_hybrid"
+  "gmc_qcg_final_constraints"
 )
 set(
   test-srcs

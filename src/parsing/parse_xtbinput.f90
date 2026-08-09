@@ -25,6 +25,7 @@
 !> These are files that can be read with the --cinp option
 
 module parse_xtbinput
+  use, intrinsic :: ieee_arithmetic, only: ieee_is_finite
   use crest_parameters
   use crest_data
   use crest_calculator,only:calcdata
@@ -49,6 +50,7 @@ module parse_xtbinput
   end interface parse_xtbinputfile
 
   public :: parse_constraints_from_cts
+  public :: parse_qcg_final_constraints
 
 !========================================================================================!
 !========================================================================================!
@@ -105,6 +107,301 @@ contains  !> MODULE PROCEDURES START HERE
 
     if (debug) stop
   end subroutine parse_xtb_inputfile
+
+!========================================================================================!
+
+  subroutine parse_qcg_final_constraints(calc,mol,fname,soluatoms,iostatus)
+!> Strict final-only reader: one $constrain block and numeric internal coordinates only.
+    implicit none
+    type(calcdata),intent(inout) :: calc
+    type(coord),intent(in) :: mol
+    character(len=*),intent(in) :: fname
+    integer,intent(in) :: soluatoms
+    integer,intent(out) :: iostatus
+
+    type(datablock) :: block
+    type(keyvalue) :: kv
+    character(len=1024) :: rawline
+    character(len=:),allocatable :: line,header
+    logical :: ex,in_block,saw_block,force_seen
+    integer :: unit,io,line_no,j,ntarget
+    real(wp) :: force_constant
+
+    iostatus = 1
+    if (allocated(calc%cons)) deallocate (calc%cons)
+    calc%nconstraints = 0
+    force_constant = 0.05_wp
+    force_seen = .false.
+    in_block = .false.
+    saw_block = .false.
+    ntarget = 0
+    line_no = 0
+    call block%deallocate()
+    block%header = 'constrain'
+
+    inquire (file=trim(fname),exist=ex)
+    if (.not.ex) then
+      call qcg_final_constraint_error(fname,0,'file not found')
+      call block%deallocate()
+      return
+    end if
+    open (newunit=unit,file=trim(fname),status='old',action='read',iostat=io)
+    if (io /= 0) then
+      call qcg_final_constraint_error(fname,0,'file could not be opened')
+      call block%deallocate()
+      return
+    end if
+
+    do
+      read (unit,'(a)',iostat=io) rawline
+      if (io < 0) exit
+      line_no = line_no+1
+      if (io /= 0) then
+        close (unit)
+        call block%deallocate()
+        call qcg_final_constraint_error(fname,line_no,'read error')
+        return
+      end if
+      line = trim(adjustl(rawline))
+      j = index(line,'#')
+      if (j == 1) cycle
+      if (j > 1) line = trim(line(:j-1))
+      if (len_trim(line) == 0) cycle
+
+      if (line(1:1) == '$') then
+        header = lowercase(trim(line))
+        if (header == '$constrain') then
+          if (saw_block .or. in_block) then
+            close (unit)
+            call block%deallocate()
+            call qcg_final_constraint_error(fname,line_no,'multiple $constrain blocks')
+            return
+          end if
+          in_block = .true.
+          saw_block = .true.
+        else if (header == '$end') then
+          if (.not.in_block) then
+            close (unit)
+            call block%deallocate()
+            call qcg_final_constraint_error(fname,line_no,'unexpected $end')
+            return
+          end if
+          in_block = .false.
+        else
+          close (unit)
+          call block%deallocate()
+          call qcg_final_constraint_error(fname,line_no,'unsupported block '//trim(header))
+          return
+        end if
+        cycle
+      end if
+
+      if (.not.in_block) then
+        close (unit)
+        call block%deallocate()
+        call qcg_final_constraint_error(fname,line_no,'content outside $constrain')
+        return
+      end if
+      call get_xtb_keyvalue(kv,line,io)
+      if (io /= 0) then
+        close (unit)
+        call block%deallocate()
+        call qcg_final_constraint_error(fname,line_no,'malformed key/value line')
+        return
+      end if
+      select case (kv%key)
+      case ('force constant')
+        if (force_seen) then
+          close (unit)
+          call block%deallocate()
+          call qcg_final_constraint_error(fname,line_no,'duplicate force constant')
+          return
+        end if
+        if (.not.qcg_final_real_token(kv%rawvalue,force_constant)) then
+          close (unit)
+          call block%deallocate()
+          call qcg_final_constraint_error(fname,line_no,'force constant must be numeric')
+          return
+        end if
+        force_seen = .true.
+      case ('distance','bond','angle','dihedral')
+        ntarget = ntarget+1
+      case default
+        close (unit)
+        call block%deallocate()
+        call qcg_final_constraint_error(fname,line_no,'unsupported key '//trim(kv%key))
+        return
+      end select
+      call block%addkv(kv)
+    end do
+    close (unit)
+
+    if (.not.saw_block .or. in_block .or. ntarget == 0) then
+      call block%deallocate()
+      call qcg_final_constraint_error(fname,line_no,'requires a closed $constrain block with constraints')
+      return
+    end if
+    call build_qcg_final_constraints(calc,mol,block,soluatoms,force_constant,trim(fname),iostatus)
+    call block%deallocate()
+    if (iostatus /= 0) then
+      if (allocated(calc%cons)) deallocate (calc%cons)
+      calc%nconstraints = 0
+    end if
+  end subroutine parse_qcg_final_constraints
+
+!========================================================================================!
+
+  subroutine qcg_final_constraint_error(fname,line_no,message)
+    implicit none
+    character(len=*),intent(in) :: fname,message
+    integer,intent(in) :: line_no
+    if (line_no > 0) then
+      write (stdout,'(1x,a,i0,2a)') 'QCG final constraint error in line ',line_no, &
+      & ' of ',trim(fname)//': '//trim(message)
+    else
+      write (stdout,'(1x,3a)') 'QCG final constraint error in ',trim(fname),': '//trim(message)
+    end if
+  end subroutine qcg_final_constraint_error
+
+!========================================================================================!
+
+  subroutine build_qcg_final_constraints(calc,mol,block,soluatoms,force_constant,fname,iostatus)
+    implicit none
+    type(calcdata),intent(inout) :: calc
+    type(coord),intent(in) :: mol
+    type(datablock),intent(in) :: block
+    integer,intent(in) :: soluatoms
+    real(wp),intent(in) :: force_constant
+    character(len=*),intent(in) :: fname
+    integer,intent(out) :: iostatus
+    type(keyvalue) :: kv
+    type(constraint) :: cons
+    real(wp) :: target
+    integer :: i,i1,i2,i3,i4
+    logical :: ok
+
+    iostatus = 1
+    if (soluatoms < 1 .or. soluatoms > mol%nat) then
+      call qcg_final_constraint_error(fname,0,'invalid solute atom count')
+      return
+    end if
+    do i = 1,block%nkv
+      kv = block%kv_list(i)
+      select case (kv%key)
+      case ('force constant')
+        cycle
+      case ('distance','bond')
+        if (kv%na /= 3) then
+          call qcg_final_constraint_error(fname,0,'distance requires two atoms and one numeric target')
+          return
+        end if
+        i1 = 0
+        i2 = 0
+        target = 0.0_wp
+        ok = qcg_final_integer_token(kv%value_rawa(1),i1)
+        if (ok) ok = qcg_final_integer_token(kv%value_rawa(2),i2)
+        if (ok) ok = qcg_final_real_token(kv%value_rawa(3),target)
+        if (.not.ok .or. target <= 0.0_wp .or. .not.qcg_final_atoms_ok([i1,i2],soluatoms)) then
+          call qcg_final_constraint_error(fname,0,'invalid numeric distance or non-solute atom')
+          return
+        end if
+        call cons%bondconstraint(i1,i2,target*aatoau,force_constant)
+      case ('angle')
+        if (kv%na /= 4) then
+          call qcg_final_constraint_error(fname,0,'angle requires three atoms and one numeric target')
+          return
+        end if
+        i1 = 0
+        i2 = 0
+        i3 = 0
+        target = 0.0_wp
+        ok = qcg_final_integer_token(kv%value_rawa(1),i1)
+        if (ok) ok = qcg_final_integer_token(kv%value_rawa(2),i2)
+        if (ok) ok = qcg_final_integer_token(kv%value_rawa(3),i3)
+        if (ok) ok = qcg_final_real_token(kv%value_rawa(4),target)
+        if (.not.ok .or. .not.qcg_final_atoms_ok([i1,i2,i3],soluatoms)) then
+          call qcg_final_constraint_error(fname,0,'invalid numeric angle or non-solute atom')
+          return
+        end if
+        call cons%angleconstraint(i1,i2,i3,target,force_constant)
+      case ('dihedral')
+        if (kv%na /= 5) then
+          call qcg_final_constraint_error(fname,0,'dihedral requires four atoms and one numeric target')
+          return
+        end if
+        i1 = 0
+        i2 = 0
+        i3 = 0
+        i4 = 0
+        target = 0.0_wp
+        ok = qcg_final_integer_token(kv%value_rawa(1),i1)
+        if (ok) ok = qcg_final_integer_token(kv%value_rawa(2),i2)
+        if (ok) ok = qcg_final_integer_token(kv%value_rawa(3),i3)
+        if (ok) ok = qcg_final_integer_token(kv%value_rawa(4),i4)
+        if (ok) ok = qcg_final_real_token(kv%value_rawa(5),target)
+        if (.not.ok .or. .not.qcg_final_atoms_ok([i1,i2,i3,i4],soluatoms)) then
+          call qcg_final_constraint_error(fname,0,'invalid numeric dihedral or non-solute atom')
+          return
+        end if
+        call cons%dihedralconstraint(i1,i2,i3,i4,target,force_constant)
+      end select
+      call calc%add(cons)
+    end do
+    iostatus = 0
+  end subroutine build_qcg_final_constraints
+
+!========================================================================================!
+
+  logical function qcg_final_atoms_ok(atoms,soluatoms)
+    implicit none
+    integer,intent(in) :: atoms(:),soluatoms
+    integer :: i,j
+
+    qcg_final_atoms_ok = all(atoms >= 1 .and. atoms <= soluatoms)
+    if (.not.qcg_final_atoms_ok) return
+    do i = 1,size(atoms)-1
+      do j = i+1,size(atoms)
+        if (atoms(i) == atoms(j)) then
+          qcg_final_atoms_ok = .false.
+          return
+        end if
+      end do
+    end do
+  end function qcg_final_atoms_ok
+
+!========================================================================================!
+
+  logical function qcg_final_integer_token(token,value)
+    implicit none
+    character(len=*),intent(in) :: token
+    integer,intent(out) :: value
+    character(len=:),allocatable :: text
+    integer :: io
+
+    value = 0
+    qcg_final_integer_token = .false.
+    if (len_trim(token) == 0 .or. scan(trim(token),' '//achar(9)) /= 0) return
+    text = trim(token)
+    read (text,*,iostat=io) value
+    qcg_final_integer_token = (io == 0)
+  end function qcg_final_integer_token
+
+!========================================================================================!
+
+  logical function qcg_final_real_token(token,value)
+    implicit none
+    character(len=*),intent(in) :: token
+    real(wp),intent(out) :: value
+    character(len=:),allocatable :: text
+    integer :: io
+
+    value = 0.0_wp
+    qcg_final_real_token = .false.
+    if (len_trim(token) == 0 .or. scan(trim(token),' '//achar(9)) /= 0) return
+    text = trim(token)
+    read (text,*,iostat=io) value
+    qcg_final_real_token = (io == 0 .and. ieee_is_finite(value))
+  end function qcg_final_real_token
 
 !========================================================================================!
 
