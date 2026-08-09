@@ -18,6 +18,10 @@ EXPECTED = {
     "qcg_single_crest_orchestration": True,
     "qcg_aiss_external_xtb": True,
     "qcg_aiss_xtb_validated_version": "6.7.0",
+    "qcg_final_optimizer": True,
+    "qcg_final_opt_level": True,
+    "qcg_final_constraints": True,
+    "qcg_final_constraint_types": ["distance", "angle", "dihedral"],
 }
 
 
