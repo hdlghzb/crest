@@ -1,6 +1,6 @@
 # CREST/GloMinCluster fork: API and provenance
 
-Status: Phase 1 Commit 2, GMC capability/provenance plus energy-component preservation.
+Status: Phase 1 Commit 3, GMC capability/provenance, energy components, and CREGEN raw-energy ranking.
 
 ## Fixed source and runtime boundary
 
@@ -32,7 +32,7 @@ v1 currently reports:
   "fork_commit": "<build-time-short-sha>",
   "upstream_base": "bd27e348ec001e27eab3177586843e8d86f66dc8",
   "energy_components": true,
-  "raw_energy_ranking": false,
+  "raw_energy_ranking": true,
   "qcg_single_crest_orchestration": true,
   "qcg_aiss_external_xtb": true,
   "qcg_aiss_xtb_validated_version": "6.7.0"
@@ -82,8 +82,23 @@ invalidations, plain XYZ comments, and extxyz frames preserve or explicitly
 invalidate the metadata. Files without all three component keys fall back to
 legacy `energy`; `ranking_energy()` is available for that compatibility rule.
 
+## Commit 3 CREGEN raw-energy ranking
+
+Commit `ff314d3` changes CREGEN scientific ranking and filtering to use
+`coord%ranking_energy()`: valid components rank by `energy_raw`, while legacy or
+invalid component metadata falls back to the legacy `energy` value. The change
+covers initial sorting and EWIN, molecular and periodic ETHR comparisons,
+representative/lowest-structure selection, relative-energy and population
+tables, Boltzmann weights, ENSO tags, iRMSD CREGEN, and the periodic
+`pbc_identical` helper.
+
+The generic `ensemble_qsort` default remains legacy total-energy sorting; only
+CREGEN callers opt into ranking energy explicitly. Calculator/optimizer/MD
+energies, `coord%energy`, and ordinary XYZ/extxyz `energy=` output remain total.
+
 ## Scope and remaining work
 
-`raw_energy_ranking=false` remains intentional: CREGEN has not yet been changed
-to use raw-energy ranking. QCG, constraint semantics, and MTD A/B or vtight work
-remain outside Commit 2.
+`raw_energy_ranking=true` is backed by the Commit 3 C1-C7 regression suite and
+the existing periodic CREGEN regression. QCG, constraint redesign, and MTD A/B
+or vtight work remain outside this commit. Clean Release validation and the
+modified-fork QCG plus xTB 6.7.0 runtime smoke remain pending.
