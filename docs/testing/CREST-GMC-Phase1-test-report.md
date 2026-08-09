@@ -93,10 +93,27 @@ The non-QCG runtime evidence is retained in
 | `gfn2//gfnff` | PASS | normal termination and non-empty best structure |
 
 The modified-fork QCG evidence is retained in
-`/home/zbhu/GloMinCluster/crest-build/qcg-xTB-6.7.0-commit4-final-20260809`.
-With module `xtb/6.7.0`, CREST exited 0 and terminated normally; retained
-`qcg_tmp/tmp_grow/best.xyz` contains 15 atoms in 17 lines, and
-`xtb_dock.out` contains at least two `Successful` records plus `* finished run`.
+`/home/zbhu/GloMinCluster/crest-build/qcg-xTB-6.7.0-hybrid-fix-20260809`.
+This is a follow-up gate required because the production optimizer changed
+after the earlier Commit 4 smoke. The exact command was:
+
+```text
+/home/zbhu/GloMinCluster/crest-build/phase1-hybrid-fix-release-final-openblas/crest solute.xyz -qcg solvent.xyz -grow -nsolv 1 -maxsolv 1 -keeptmp -T 1
+```
+
+With GCC 14.2.0, OpenBLAS 0.3.34, xTB module `6.7.0`, and
+`OMP_NUM_THREADS=1`, CREST exited 0 and terminated normally. The retained
+`qcg_tmp/tmp_grow/best.xyz` and `best_after_gen.xyz` each contain 15 atoms in
+17 lines. `xtb_dock.out` contains two `Successful` records and one
+`* finished run` marker. The binary SHA256 is
+`a1e7e4421f4004931f08403c010e883c47eb258a6d2c077cd00666dacaaee466`; its
+capability probe reports `fork_commit=c7ee708`, `energy_components=true`,
+`raw_energy_ranking=true`, and `qcg_aiss_xtb_validated_version=6.7.0`.
+
+The earlier Commit 4 QCG artifacts remain at
+`/home/zbhu/GloMinCluster/crest-build/qcg-xTB-6.7.0-commit4-final-20260809`
+as historical evidence; the follow-up directory is the acceptance evidence
+for the optimizer-fix state.
 
 ## Hybrid integration HI1–HI5
 

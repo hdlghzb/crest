@@ -125,6 +125,14 @@ smokes reports `fork_commit=c7ee708` because it was built from the same
 production-source state before the test-only commit; the implementation/test
 commit is `2a8bc79`.
 
+Because the production optimizer changed, the QCG compatibility gate was then
+rerun with the hybrid-fix binary and xTB `6.7.0`. The retained evidence is
+`/home/zbhu/GloMinCluster/crest-build/qcg-xTB-6.7.0-hybrid-fix-20260809`;
+CREST exited 0, `best.xyz` and `best_after_gen.xyz` were each valid 15-atom
+XYZ files, and `xtb_dock.out` contained successful and finished-run markers.
+The binary SHA256 was
+`a1e7e4421f4004931f08403c010e883c47eb258a6d2c077cd00666dacaaee466`.
+
 ## Scope and remaining work
 
 `raw_energy_ranking=true` is backed by the Commit 3 C1-C7 regression suite and
@@ -134,7 +142,8 @@ was built with GCC/GFortran 14.2.0 and OpenBLAS 0.3.34 (`1600/1600`), its
 crest-only gate passed `19/19`, and its capability probe reports
 `fork_commit=ac4a94a`.
 
-The final binary passed GFN2, mdopt, NCI-iMTD, both hybrid runtime smokes, and
-the modified-fork QCG smoke with xTB 6.7.0. These are executable runtime-smoke
-results, not scientific benchmarks. Constraint redesign, MTD A/B or vtight
-workflow work, and formal release readiness remain outside this commit.
+The final runtime evidence includes GFN2, mdopt, NCI-iMTD, both hybrid runtime
+smokes, and the follow-up modified-fork QCG smoke with xTB 6.7.0. These are
+executable runtime-smoke results, not scientific benchmarks. Constraint
+redesign, MTD A/B or vtight workflow work, and formal release readiness remain
+outside this commit.

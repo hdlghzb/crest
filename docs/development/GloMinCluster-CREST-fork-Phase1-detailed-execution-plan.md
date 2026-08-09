@@ -2685,7 +2685,11 @@ no submodule/gitlink changes
 - [x] QCG default candidate = xTB 6.7.0；
 - [x] official xTB 6.7.1 regression 已记录；
 - [x] 902b313 compatibility reference 已通过；
-- [x] modified Phase 1 fork + xTB 6.7.0 QCG smoke PASS。
+- [x] modified Phase 1 fork + xTB 6.7.0 QCG smoke PASS；production optimizer
+  修复后的 follow-up 证据保留于
+  `/home/zbhu/GloMinCluster/crest-build/qcg-xTB-6.7.0-hybrid-fix-20260809`，
+  binary SHA256 为
+  `a1e7e4421f4004931f08403c010e883c47eb258a6d2c077cd00666dacaaee466`。
 
 ## Energy model
 
