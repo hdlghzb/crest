@@ -2,10 +2,10 @@
 
 Record date: 2026-08-09
 
-Status: **NOT CLOSED**. A1 final-optimizer controls are implemented and
-targeted-tested. Final-only structural restraints, capability updates, clean
-Release acceptance, standalone equivalence, and the post-implementation QCG
-runtime gate remain pending.
+Status: **NOT CLOSED**. A1 final-optimizer controls and A2 final-only
+structural restraints are implemented and targeted-tested. Capability updates,
+standalone equivalence, clean Release acceptance, and the post-implementation
+QCG runtime gate remain pending.
 
 ## Source identity
 
@@ -13,6 +13,7 @@ runtime gate remain pending.
 Repository: /home/zbhu/GloMinCluster/crest
 Branch: glomincluster/crest-3.1-api-v1
 A1 source commit: b64768274d0f6861ab07e14bd46ec901652a7cee
+A2 source commit: 5b63f63ef1e75cf8e9f4513517a3c930b656592b
 Pinned Phase 1 base: bd27e348ec001e27eab3177586843e8d86f66dc8
 ```
 
@@ -47,17 +48,49 @@ Evidence root: `/home/zbhu/GloMinCluster/crest-build`
 
 The tests used GCC/GFortran 14.2.0, OpenBLAS 0.3.34, and the explicit runtime
 library path required by the Phase 1 acceptance. No real QCG/xTB runtime was
-run after A1, so final geometry/energy-component runtime behavior is not yet
-accepted.
+run after A1 or A2, so final geometry/energy-component runtime behavior is not
+yet accepted.
+
+## A2 implementation
+
+Commit `5b63f63` adds a strict final-only structural-restraint path:
+
+- `--qcg-final-cinp <file>` is parsed independently from generic `--cinp` and
+  loaded only by the QCG grow-final internal optimizer.
+- Only numeric distance/bond, angle, and dihedral targets are accepted. The
+  parser rejects `auto`, `reference`/`coord.ref`, `$wall`, unsupported blocks or
+  keys, malformed values, missing files, non-solute indices, and repeated atom
+  indices within one internal coordinate.
+- Distance targets are converted from Angstrom to bohr; angle and dihedral
+  targets reuse the existing calculator constraint constructors and their unit
+  handling. No second restraint-energy implementation was added.
+- The final helper clears grow-only freeze and constraint state before adding
+  the explicitly requested final constraints. The existing grow/setup/aISS
+  paths do not read `qcg_final_cinp`.
+
+## A2 evidence
+
+| Check | Result | Evidence |
+|---|---|---|
+| GCC14/OpenBLAS CMake build | PASS | `phase2a-a2-cmake-build-resume-20260809.log`, 144/144 |
+| A2 + A1 targeted CTest | PASS | `phase2a-a2-targeted-20260809.log`, 6/6 |
+| Final incremental rebuild after declaration cleanup | PASS | current A2 build tree, 8/8 link/build steps |
+| Final targeted CTest rerun | PASS | current A2 build tree, 6/6 |
+| `git diff --check` | PASS | tester report and final pre-commit check |
+
+The first CTest attempt used the system Fortran runtime and failed before test
+execution because `/lib64/libgfortran.so.5` lacked `GFORTRAN_10`. Re-running
+with `LD_LIBRARY_PATH=/share/software/gcc/14.2.0/lib64:/share/software/openblas/0.3.34/lib`
+passed all six tests; this was an environment-loading issue, not a source
+regression. No real QCG/xTB runtime was run after A2, so geometry, energy
+components, grow/aISS non-leakage, and rollback behavior remain unaccepted.
 
 ## Pending gates
 
-- A2 final-only numeric distance/angle/dihedral restraints, with no grow/aISS
-  leakage and no `auto`/`coord.ref` support.
 - Capability JSON fields for the QCG final optimizer and constraint types.
 - A1/A2 standalone mdopt-equivalence comparison and final energy-component
   checks on the returned geometry.
-- CMake/Meson targeted and full regression, clean Release provenance, ldd,
+- Meson targeted and full regression, clean Release provenance, ldd,
   and official xTB 6.7.0 runtime smokes: baseline, vtight without restraints,
   and vtight with a distance restraint.
 
@@ -65,6 +98,5 @@ Therefore:
 
 ```text
 Phase 2A = NOT CLOSED
-blocker = A2 and final acceptance gates are not complete
+blocker = capability, standalone-energy, Meson/Release, and official xTB 6.7.0 runtime gates are not complete
 ```
-
