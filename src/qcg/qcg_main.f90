@@ -453,7 +453,7 @@ subroutine qcg_grow(env,solu,solv,clus,tim)
 
   integer                    :: minE_pos,m
   integer                    :: iter = 1
-  integer                    :: i,j,io,v
+  integer                    :: i,j,io,v,finalopt_io
   integer                    :: max_cycle
   integer                    :: nat_backup
   logical                    :: e_there,high_e,success,neg_E
@@ -730,11 +730,13 @@ subroutine qcg_grow(env,solu,solv,clus,tim)
   call wrxyz('cluster.xyz',clus%nat,clus%at,clus%xyz*bohr)
 
 !--- One optimization without Wall Potential and with implicit model
-  gfnver_tmp = env%gfnver
-  if (env%final_gfn2_opt) env%gfnver = '--gfn2'
-  call opt_cluster(env,solu,clus,'cluster.xyz',.true.)
-  env%gfnver = gfnver_tmp
-  call rename('xtbopt.xyz','cluster_optimized.xyz')
+  call remove('cluster_optimized.xyz')
+  call qcg_final_opt_internal(env,solu,clus,finalopt_io)
+  if (finalopt_io /= 0) then
+    write (stdout,'(1x,a)') 'QCG final optimization failed; cluster_optimized.xyz was not written.'
+    call creststop(status_failed)
+  end if
+  call clus%write('cluster_optimized.xyz')
   call copysub('cluster_optimized.xyz',resultspath)
 
 !--- output and files

@@ -2900,6 +2900,22 @@ subroutine parseflags(env,arg,nra)
         processedarg(i) = .true.
         env%final_gfn2_opt = .false.
 
+      case ('-qcg-final-opt-level')
+        processedarg(i) = .true.
+        if (i+1 .gt. nra .or. len_trim(arg1) == 0) then
+          call parseflags_missing(trim(arg(i)))
+          call creststop(status_args)
+        end if
+        env%qcg_final_optlev = optlevnum(arg1,iostat=io)
+        if (io /= 0) then
+          write (stdout,'(1x,a,1x,a)') trim(arg(i)), &
+          & 'requires a valid optimization level (normal/tight/vtight/extreme or numeric level)'
+          call creststop(status_args)
+        end if
+        env%qcg_final_optlev_set = .true.
+        processedarg(i+1) = .true.
+        write (stdout,'(2x,a,1x,a)') trim(arg(i)),optlevflag(env%qcg_final_optlev)
+
       case ('-directed') !> specify the directed list
         processedarg(i) = .true.
         env%qcg_flag = .true.

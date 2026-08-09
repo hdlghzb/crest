@@ -55,3 +55,10 @@ add_test(
     "$<TARGET_FILE:${PROJECT_NAME}-exe>"
     "${CREST_BUILD_COMMIT}"
 )
+add_test(
+  NAME "${PROJECT_NAME}/gmc_qcg_final"
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/test_gmc_qcg_final.py"
+    "$<TARGET_FILE:${PROJECT_NAME}-exe>"
+)

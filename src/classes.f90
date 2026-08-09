@@ -513,6 +513,8 @@ module crest_data
     real(wp)          :: freq_scal            !> Frequency scaling factor
     character(len=:),allocatable :: solu_file,solv_file !> solute  and solvent input file
     character(len=5) :: docking_qcg_flag = '--qcg'
+    real(wp)          :: qcg_final_optlev = 0.0_wp !> QCG grow-final-only optimizer level
+    logical           :: qcg_final_optlev_set = .false. !> user supplied final-only level
 
     !>--- clustering data
     integer  :: maxcluster = 0  !> maximum number of clusters to be generated
@@ -1351,6 +1353,8 @@ contains  !> MODULE PROCEDURES START HERE
     self%freqver        = src%freqver
     self%freq_scal      = src%freq_scal
     self%docking_qcg_flag = src%docking_qcg_flag
+    self%qcg_final_optlev = src%qcg_final_optlev
+    self%qcg_final_optlev_set = src%qcg_final_optlev_set
     if (allocated(src%directed_file))   self%directed_file   = src%directed_file
     if (allocated(src%directed_list))   self%directed_list   = src%directed_list
     if (allocated(src%directed_number)) self%directed_number = src%directed_number

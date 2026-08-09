@@ -167,6 +167,62 @@ subroutine xtb_opt_qcg(env,mol,constrain)
   end if
 end subroutine xtb_opt_qcg
 
+!--------------------------------------------------------------------------------------------
+! QCG grow-final optimization using the internal calculator/optimizer path.
+! This helper is intentionally scoped to the no-wall final step in qcg_grow.
+!--------------------------------------------------------------------------------------------
+subroutine qcg_final_opt_internal(env,solu,clus,iostatus)
+  use crest_parameters
+  use crest_data
+  use crest_calculator
+  use qcg_coord_type
+  use strucrd
+  use optimize_module
+  implicit none
+
+  type(systemdata),intent(inout) :: env
+  type(coord_qcg),intent(in) :: solu
+  type(coord_qcg),intent(inout) :: clus
+  integer,intent(out) :: iostatus
+
+  type(calcdata) :: calc
+  type(coord) :: molin,molout
+  real(wp),allocatable :: grad(:,:)
+  real(wp) :: energy
+  character(len=20) :: gfnver_tmp
+  integer :: T,Tn,io
+
+  ! `solu` is retained in the interface to make the grow-final call boundary explicit.
+  iostatus = 1
+  gfnver_tmp = env%gfnver
+  if (env%final_gfn2_opt) env%gfnver = '--gfn2'
+  call new_ompautoset(env,'max',1,T,Tn)
+
+  molin = clus%as_coord()
+  allocate (grad(3,molin%nat),source=0.0_wp)
+  call env2calc(env,calc,molin)
+
+  ! Grow-only whole-solute protection must not reach the final free-cluster opt.
+  if (allocated(calc%freezelist)) deallocate (calc%freezelist)
+  calc%nfreeze = 0
+  if (allocated(calc%cons)) deallocate (calc%cons)
+  calc%nconstraints = 0
+
+  calc%optlev = nint(env%optlev)
+  if (env%qcg_final_optlev_set) calc%optlev = nint(env%qcg_final_optlev)
+
+  call optimize_geometry(molin,molout,calc,energy,grad,.false.,.false.,io)
+  if (io == 0) then
+    call clus%from_coord(molout)
+    iostatus = 0
+  else
+    write (stdout,'(1x,a,i0)') 'QCG final internal optimization failed, status ',io
+  end if
+
+  deallocate (grad)
+  env%gfnver = gfnver_tmp
+end subroutine qcg_final_opt_internal
+
 subroutine xtb_md_ensemble_qcg(env,solu,solv,clus,resultspath)
   use crest_parameters
   use crest_data
@@ -1632,4 +1688,3 @@ subroutine qcg_envcalc_reinit(env,mol,addconstraints,printinfo)
   end if
 
 end subroutine qcg_envcalc_reinit
-

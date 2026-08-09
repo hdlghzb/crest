@@ -60,3 +60,11 @@ test(
     _commit,
   ],
 )
+test(
+  'crest/gmc_qcg_final',
+  python3,
+  args : [
+    files('test_gmc_qcg_final.py'),
+    meson.project_build_root() / 'crest',
+  ],
+)
