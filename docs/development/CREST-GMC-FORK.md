@@ -1,7 +1,7 @@
 # CREST/GloMinCluster fork: API and provenance
 
-Status: Phase 1: **RUNTIME SMOKE-TESTED**. Phase 2A: **IMPLEMENTED TO A3,
-NOT CLOSED**.
+Status: Phase 1: **RUNTIME SMOKE-TESTED**. Phase 2A: **CLOSED for code/runtime
+acceptance**.
 
 CREST GMC fork Phase 1 is runtime smoke-tested on the clean committed source
 acceptance state. The final clean Release acceptance covered provenance,
@@ -103,9 +103,34 @@ phase2a-a3-targeted-20260809.log
 phase2a-a3-capabilities-20260809.json
 ```
 
-This checkpoint is code/build/API evidence only. Standalone mdopt equivalence,
-clean Release/Meson acceptance, and the post-implementation official xTB 6.7.0
-QCG runtime smokes remain pending, so Phase 2A is not closed.
+This was the A3 code/build/API checkpoint. The subsequent Phase 2A acceptance
+gates are recorded below.
+
+## Phase 2A acceptance closure
+
+The final acceptance evidence is retained under
+`/home/zbhu/GloMinCluster/crest-build`:
+
+- standalone QCG/standalone optimizer equivalence:
+  `phase2a-standalone-equivalence-20260809/standalone-equivalence.json`;
+- clean CMake Release: `phase2a-a3-clean-release-20260809`;
+- clean Meson Release: `phase2a-a3-meson-release-20260809`;
+- official xTB 6.7.0 QCG runtime matrix:
+  `phase2a-qcg-runtime-20260809/validation.txt`.
+
+The standalone matrix passed for `vtight` with and without a final distance
+restraint. CMake Release built `1602/1602`, passed crest-only `21/21` and full
+CTest `74/74`; Meson Release built `958/958` and passed the project `crest`
+suite `21/21`. Both clean binaries report API v1 and `fork_commit=96a9823`,
+and their GCC14/OpenBLAS dynamic-link checks passed. The post-A3 QCG matrix
+passed baseline, `vtight` without restraints, and `vtight` with a numeric
+distance restraint using official xTB `6.7.0 (08769fc)`.
+
+This closes Phase 2A's code/runtime acceptance scope. The 189-test aggregate
+Meson invocation is not a Phase 2A gate; it encountered the independent
+third-party `tblite:gfn1-xtb` 30-second timeout, while the complete project
+`crest` suite passed. Scientific benchmarks, global-minimum claims, formal
+distribution release, and FeCN6 acceptance remain outside this closure.
 
 ## Build-time provenance
 
@@ -217,10 +242,7 @@ the direct Meson `pbc_cregen` SIGFPE at
 diagnostic, while CMake Release `pbc_cregen` passed.
 
 These are executable runtime-smoke results, not scientific benchmarks.
-Constraint redesign, QCG final optimizer work, MTD A/B or vtight workflow work,
-and formal release readiness remain outside Phase 1. The QCG final optimizer and
-final-only structural-restraint implementation is now the active Phase 2A work
-and is implemented through A3, but its runtime and Release gates are pending.
+Constraint redesign beyond Phase 2A, MTD A/B, formal distribution release, and
+FeCN6 acceptance remain outside this scope.
 
-Next stage: **Phase 2A acceptance gates** — standalone equivalence, Meson/clean
-Release regression, and the official xTB 6.7.0 QCG runtime smokes.
+Next stage: **not started**. Phase 2B requires a separate explicit task.

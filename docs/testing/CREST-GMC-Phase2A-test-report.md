@@ -2,10 +2,10 @@
 
 Record date: 2026-08-09
 
-Status: **NOT CLOSED**. A1 final-optimizer controls, A2 final-only structural
-restraints, and A3 capability fields are implemented and targeted-tested.
-Standalone equivalence, clean Release acceptance, and the post-implementation
-QCG runtime gate remain pending.
+Status: **CLOSED** for the Phase 2A code/runtime acceptance scope. A1
+final-optimizer controls, A2 final-only structural restraints, and A3
+capability fields are implemented, regression-tested, standalone-equivalent,
+clean-build validated, and runtime-smoke-tested with official xTB 6.7.0.
 
 ## Source identity
 
@@ -111,22 +111,72 @@ was reconfigured and rebuilt after that commit in
 | Python capability contract | PASS | `test/test_gmc_capabilities.py`, expected `96a9823` |
 
 The rebuilt binary reported API v1, the unchanged Phase 1 fields, all three
-final capability flags, and the distance/angle/dihedral type list. The runtime
-checks used the explicit GCC14/OpenBLAS library path because the system
-`libgfortran` does not provide `GFORTRAN_10`. No real QCG/xTB runtime was run
-after A3.
+final capability flags, and the distance/angle/dihedral type list. The A3
+checkpoint runtime checks used the explicit GCC14/OpenBLAS library path because
+the system `libgfortran` does not provide `GFORTRAN_10`; the post-A3 QCG runtime
+gate is recorded in the closure section below.
 
-## Pending gates
+## Phase 2A acceptance closure
 
-- A1/A2 standalone mdopt-equivalence comparison and final energy-component
-  checks on the returned geometry.
-- Meson targeted and full regression, clean Release provenance, ldd,
-  and official xTB 6.7.0 runtime smokes: baseline, vtight without restraints,
-  and vtight with a distance restraint.
+### Standalone equivalence
+
+The A3 binary was compared with the standalone `optimize_geometry` path using
+the same 15-atom propanol-water fixture, GFN2, `vtight`, one thread, and the
+same final-only restraint file where applicable. The verifier is
+`/home/zbhu/GloMinCluster/crest-build/phase2a-standalone-equivalence-20260809/verify_standalone_equivalence.py`;
+its output is `standalone-equivalence.json`.
+
+| Case | Translation-aligned RMSD (A) | Max component-energy difference (Eh) | d(1,2) difference (A) |
+|---|---:|---:|---:|
+| vtight, no final restraint | 1.22e-6 | 1.00e-10 | 1.39e-8 |
+| vtight + distance restraint | 5.52e-3 | 2.22e-7 | 6.57e-6 |
+
+Both cases passed the verifier tolerances of `0.01 A`, `2e-6 Eh`, and
+`2e-4 A`. All QCG and standalone logs report `commit (96a9823)`.
+
+### Clean CMake Release and Meson Release
+
+| Check | Result | Evidence |
+|---|---|---|
+| Clean CMake Release configure/build | PASS, 1602/1602 | `phase2a-a3-clean-release-20260809/configure.log`, `build.log` |
+| CMake crest-only CTest | PASS, 21/21 | `crest-only-ctest.log` |
+| CMake full CTest | PASS, 74/74 | `full-ctest.log` |
+| Clean CMake capability/provenance | PASS | `capabilities.json`, `crest_metadata.fh` |
+| CMake dynamic linking | PASS | `ldd.txt`, GCC14/OpenBLAS paths, no missing libraries |
+| Meson Release configure/build | PASS, 958/958 | `phase2a-a3-meson-release-20260809/setup.log`, `build.log` |
+| Meson CREST suite | PASS, 21/21 | `crest-suite.log` |
+| Meson capability/provenance | PASS | `capabilities.json`, `crest_metadata.fh` |
+| Meson dynamic linking | PASS | `ldd.txt`, GCC14/OpenBLAS paths, no missing libraries |
+
+Both build systems report API v1, `fork_commit=96a9823`, all Phase 1 fields,
+and the A3 final capability fields. A broader Meson invocation over all 189
+tests was not used as the CREST acceptance gate: it reached the unrelated
+third-party `tblite:gfn1-xtb` 30-second test timeout. The project-scoped
+`crest` suite passed independently and completely.
+
+### Official xTB 6.7.0 QCG runtime
+
+The clean CMake Release binary was run with
+`/share/software/xtb/6.7.0/bin/xtb`, GCC/GFortran 14.2.0 and OpenBLAS 0.3.34
+library paths, and one thread. Evidence root:
+`/home/zbhu/GloMinCluster/crest-build/phase2a-qcg-runtime-20260809`.
+
+| Case | Result | Runtime evidence |
+|---|---|---|
+| baseline | PASS | exit 0, normal QCG grow/final output |
+| `vtight` without restraint | PASS | final-only opt level parsed, exit 0 |
+| `vtight` + distance restraint | PASS | final-only constraint file parsed, exit 0 |
+
+Each case reports CREST `96a9823`, xTB-docking `6.7.0 (08769fc)`, two
+successful docking records, one finished-run marker, complete 15-atom
+`best.xyz` and `best_after_gen.xyz`, `grow/cluster_optimized.xyz`, growth
+completion, and normal CREST termination. The compact validation record is
+`phase2a-qcg-runtime-20260809/validation.txt`.
 
 Therefore:
 
 ```text
-Phase 2A = NOT CLOSED
-blocker = standalone-energy, Meson/Release, and official xTB 6.7.0 runtime gates are not complete
+Phase 2A = CLOSED
+closure = standalone equivalence, clean CMake/Meson Release gates, and all three official xTB 6.7.0 QCG runtime gates passed
+non-goals = scientific benchmark/global-minimum validation, formal distribution release, and FeCN6 acceptance
 ```
