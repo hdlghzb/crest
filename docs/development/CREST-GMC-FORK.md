@@ -1,8 +1,16 @@
 # CREST/GloMinCluster fork: API and provenance
 
-Status: Phase 1 hybrid runtime closure: Commit 4 GMC capability/provenance,
-energy components, CREGEN raw-energy ranking, persistence regression coverage,
-and follow-up production hybrid integration fix `2a8bc79`.
+Status: Phase 1 status: **RUNTIME SMOKE-TESTED**.
+
+CREST GMC fork Phase 1 is runtime smoke-tested on the clean committed source
+acceptance state. The final clean Release acceptance covered provenance,
+no-input capability behavior, dynamic linking, crest-only and full CTest,
+GFN2/mdopt/NCI-iMTD, both hybrid modes, persistence/CREGEN artifact checks,
+and QCG with official xTB 6.7.0.
+
+This status is not scientific benchmark validation, constraint scientific
+acceptance, formal software release acceptance, static distribution
+acceptance, or FeCN6 acceptance.
 
 ## Fixed source and runtime boundary
 
@@ -12,6 +20,26 @@ and follow-up production hybrid integration fix `2a8bc79`.
 - Pinned upstream source baseline: `bd27e348ec001e27eab3177586843e8d86f66dc8`
 - CREST version: `3.1.0`
 - GMC machine API version: `1`
+
+## Final clean acceptance identity
+
+The accepted binary was configured and built fresh from this clean committed
+source state before the documentation-only closeout commit:
+
+```text
+Pinned upstream base:       bd27e348ec001e27eab3177586843e8d86f66dc8
+Accepted source HEAD:       44bfec711151474c85be827d9b95b47e812b5a81
+Accepted source short HEAD: 44bfec7
+Accepted fork_commit:       44bfec7
+Accepted binary:
+  /home/zbhu/GloMinCluster/crest-build/phase1-final-clean-acceptance-release/crest
+Accepted binary SHA256:
+  e2c85812621a9b7e965c835ed7e2c1f9947836d23fbb2a18eaddfff8ee91f76f
+```
+
+The binary `fork_commit` equals the accepted source short HEAD exactly. The
+current documentation HEAD is the later docs-only closeout commit and is
+intentionally distinct from the accepted binary provenance.
 
 The pinned upstream SHA identifies the scientific/source baseline. It is not the
 fork build identity. A binary reports the short source commit used at build time
@@ -109,6 +137,10 @@ it does not change the hybrid algorithm or QCG workflow.
 
 ## Follow-up hybrid runtime closure
 
+The implementation-stage binary identities below are historical evidence. They
+are retained to explain the `2a8bc79` fix, but they are not the final accepted
+binary identity; use **Final clean acceptance identity** above for Phase 1.
+
 The first actual `gfn2@gfnff` runtime exposed a stale-component edge case in
 the quality post-optimization return: the final geometry was correct, but the
 last component metadata was not guaranteed to describe that returned geometry.
@@ -133,17 +165,25 @@ XYZ files, and `xtb_dock.out` contained successful and finished-run markers.
 The binary SHA256 was
 `a1e7e4421f4004931f08403c010e883c47eb258a6d2c077cd00666dacaaee466`.
 
-## Scope and remaining work
+## Final Phase 1 scope and next stage
 
-`raw_energy_ranking=true` is backed by the Commit 3 C1-C7 regression suite and
-the existing periodic CREGEN regression. Commit 4 is covered by CMake Release
-`gmc_hybrid` 8/8 and Meson Debug targeted tests 6/6. A clean final Release tree
-was built with GCC/GFortran 14.2.0 and OpenBLAS 0.3.34 (`1600/1600`), its
-crest-only gate passed `19/19`, and its capability probe reports
-`fork_commit=ac4a94a`.
+`raw_energy_ranking=true` is backed by the final Release C1-C7 regression
+(`7/7`) and the periodic CREGEN regression. The final Release build used
+GCC/GFortran 14.2.0, OpenBLAS 0.3.34, CMake 3.31.10, and Ninja 1.13.0;
+configure selected the explicit OpenBLAS 0.3.34 library and the complete build
+passed `1600/1600`. Crest-only CTest passed `19/19`, full Release CTest passed
+`72/72`, and the final capability probe reports `fork_commit=44bfec7`.
 
-The final runtime evidence includes GFN2, mdopt, NCI-iMTD, both hybrid runtime
-smokes, and the follow-up modified-fork QCG smoke with xTB 6.7.0. These are
-executable runtime-smoke results, not scientific benchmarks. Constraint
-redesign, MTD A/B or vtight workflow work, and formal release readiness remain
-outside this commit.
+The final runtime evidence is retained under
+`/home/zbhu/GloMinCluster/crest-build/runtime-phase1-final-clean-acceptance-20260809`.
+All GFN2, mdopt, NCI-iMTD, hybrid, verifier, and QCG records reference the
+same final binary SHA256 listed above. Meson Debug targeted tests passed `6/6`;
+the direct Meson `pbc_cregen` SIGFPE at
+`src/sorting/pbc_fingerprint.f90:117` remains the known non-blocking Debug
+diagnostic, while CMake Release `pbc_cregen` passed.
+
+These are executable runtime-smoke results, not scientific benchmarks.
+Constraint redesign, QCG final optimizer work, MTD A/B or vtight workflow work,
+and formal release readiness remain outside Phase 1.
+
+Next stage: **Phase 2 — structural constraints + QCG final optimizer**.

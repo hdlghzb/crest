@@ -1,7 +1,7 @@
 # GloMinCluster / CREST Fork Phase 1 详细执行方案
 ## —— 在已验收 CREST 3.1 基线上建立 GMC API v1、分离 raw/restraint/total energy，并使 CREGEN 使用 raw energy
 
-**用途：** 直接交给 Codex / Luna 执行的 Phase 1 当前有效实施文档
+**用途：** Phase 1 实施方案、设计追溯与最终验收归档；当前状态以本文顶部的最终 clean acceptance 记录为准
 **日期：** 2026-08-09
 **GloMinCluster 目标开发线：** `develop/0.2.0a2`
 **CREST fork：** `hdlghzb/crest`
@@ -13,9 +13,20 @@
 **Phase 1 QCG runtime candidate：** **xTB 6.7.0**
 **已验证兼容参考：** xTB `902b313678b95d793122174df09d590365a669d7` QCG PASS
 **已知不兼容：** official tagged xTB 6.7.1 在固定 CREST 3.1 baseline 上 QCG/aISS FAIL
-**Phase 1 状态：** Commit 1–4 已实现并验证；后续 hybrid runtime 修复与
-HI1–HI5 实际集成已在 `2a8bc79` 完成。当前结果为
-**RUNTIME SMOKE-TESTED**，不包含科学 benchmark 或正式 release acceptance。
+**Phase 1 状态：** Commit 1–4、后续 hybrid runtime 修复与 HI1–HI5 实际集成
+均已完成；最终 clean Release acceptance 的结果为
+**RUNTIME SMOKE-TESTED**。这不是科学 benchmark、约束科学验收、静态分发
+验收或正式软件 release acceptance。
+
+**Final accepted source HEAD：** `44bfec711151474c85be827d9b95b47e812b5a81`
+（short `44bfec7`）
+**Final accepted fork_commit：** `44bfec7`
+**Final accepted binary SHA256：**
+`e2c85812621a9b7e965c835ed7e2c1f9947836d23fbb2a18eaddfff8ee91f76f`
+**Final acceptance binary：**
+`/home/zbhu/GloMinCluster/crest-build/phase1-final-clean-acceptance-release/crest`
+**Final runtime evidence root：**
+`/home/zbhu/GloMinCluster/crest-build/runtime-phase1-final-clean-acceptance-20260809`
 
 **当前基础证据文档：**
 
@@ -25,6 +36,11 @@ docs/development/CREST-3.1-baseline-build-test-SOP-v3.md
 ```
 
 > 本文中的 `bd27e348...` 是**固定 upstream base**，不是当前开发分支必须保持的 HEAD。当前 branch HEAD 已包含 baseline 文档提交和 post-baseline hardening；执行任务时必须读取实际 `git rev-parse HEAD`，不得把 branch 重置回 upstream base。
+
+> **当前状态说明：** 下文保留的“当前待完成”条目是 Phase 1 实现前的
+> historical pre-implementation audit / implementation basis，不代表当前
+> fork 仍有这些未完成项。最终接受结果和证据以本文顶部、测试报告以及实际
+> runtime artifacts 为准。
 
 ---
 
@@ -77,24 +93,25 @@ xTB 902b313... development commit QCG PASS，仅作兼容性证据，不作为�
 
 # 1. 本阶段明确包含与不包含的内容
 
-## 1.1 本阶段必须完成
+## 1.1 Phase 1 范围与已接受结果
 
-### 已完成前置基础
+### Historical baseline / implementation basis
 
-以下已经完成，不得在 Phase 1 功能实现时重复建立或重置：
+以下条目记录 Phase 1 实现前的 baseline 与设计依据；它们不代表当前待办，
+也不得据此重置已接受的开发分支：
 
 1. GloMinCluster-controlled CREST fork 已建立；
 2. `origin = hdlghzb/crest`，`upstream = crest-lab/crest`；
 3. upstream PR #483 base 固定为 `bd27e348...`；
 4. 开发 branch 为 `glomincluster/crest-3.1-api-v1`；
 5. baseline = `PASS WITH DEBUG DIAGNOSTICS`；
-6. primary acceptance 已验证为 GCC 14.2 + OpenBLAS 0.3.34 + CMake 3.31.10 + RelWithDebInfo；
-7. crest-only CTest 已验证 `15/15 PASS`；
-8. GFN2、mdopt、NCI-iMTD、`--gfn2@gfnff`、`--gfn2//gfnff` runtime smoke 已通过；
+6. historical primary acceptance 使用 GCC 14.2 + OpenBLAS 0.3.34 + CMake 3.31.10 + RelWithDebInfo；
+7. historical baseline crest-only CTest 为 `15/15 PASS`；最终 clean Release gate 为 `19/19`，full Release CTest 为 `72/72`；
+8. GFN2、mdopt、NCI-iMTD、`--gfn2@gfnff`、`--gfn2//gfnff` 的实现与 runtime smoke 已完成，最终 binary 证据见顶部路径；
 9. QCG strict A/B 已固定 Phase 1 runtime candidate 为 xTB 6.7.0；
 10. zero-RMSD MTD divide-by-zero 已在 commit `ff93ba5` 修复并通过 Debug / CMake / NCI-iMTD regression。
 
-### Phase 1 当前待完成：能量语义
+### Historical pre-implementation audit / implementation basis: 能量语义
 
 11. 增加：
    ```text
@@ -109,7 +126,7 @@ xTB 902b313... development commit QCG PASS，仅作兼容性证据，不作为�
 16. energy components 能够跨普通 XYZ / extxyz ensemble 落盘和读回；
 17. legacy 文件没有 component metadata 时安全 fallback。
 
-### Phase 1 当前待完成：科学排序
+### Historical pre-implementation audit / implementation basis: 科学排序
 
 18. 增加统一 `ranking/science energy` accessor；
 19. CREGEN 的：
@@ -121,7 +138,7 @@ xTB 902b313... development commit QCG PASS，仅作兼容性证据，不作为�
    全部使用 raw energy；
 20. constraint off 时行为与已验收 baseline 不变。
 
-### Phase 1 当前待完成：API / provenance
+### Historical pre-implementation audit / implementation basis: API / provenance
 
 21. `crest --gmc-capabilities`；
 22. 输出：
@@ -241,12 +258,14 @@ historical dependency-suite timeouts = debug/oversubscription diagnostic
 
 zero-RMSD metadynamics SIGFPE 已在 `ff93ba5` 修复，后续不得再作为已知允许失败项。
 
-### Release
+### Final clean Release acceptance
 
-独立 CREST `CMAKE_BUILD_TYPE=Release` 已完成验证：最终 clean tree
-`/home/zbhu/GloMinCluster/crest-build/phase1-commit4-release-final-openblas`
-构建 `1600/1600`，crest-only CTest `19/19`，capability reports
-`fork_commit=ac4a94a`。
+最终 clean tree
+`/home/zbhu/GloMinCluster/crest-build/phase1-final-clean-acceptance-release`
+从 accepted source HEAD fresh configure/build，完成 `1600/1600` Ninja steps；
+Release crest-only CTest 为 `19/19`，full Release CTest 为 `72/72`。其
+capability probe reports `fork_commit=44bfec7`，与 accepted source short HEAD
+完全一致；动态 `ldd` 无缺失库，OpenBLAS provenance 为 0.3.34。
 
 状态写作：
 
@@ -254,8 +273,12 @@ zero-RMSD metadynamics SIGFPE 已在 `ff93ba5` 修复，后续不得再作为已
 VALIDATED FOR RUNTIME SMOKE
 ```
 
-它已作为 Phase 1 Commit 4 的最终 executable gate 完成；仍不等同于科学
-benchmark 或正式 release acceptance。
+它是 Phase 1 的最终 executable runtime gate；仍不等同于科学 benchmark、
+约束科学验收、静态分发验收或正式软件 release acceptance。
+
+此前的 `phase1-commit4-release-final-openblas`、
+`phase1-hybrid-fix-release-final-openblas` 以及相应 binary 只作为
+historical intermediate evidence，不是本次最终接受 binary。
 
 ---
 
@@ -2667,8 +2690,9 @@ no submodule/gitlink changes
 - [x] fork branch = `glomincluster/crest-3.1-api-v1`；
 - [x] baseline / SOP 已建立；
 - [x] zero-RMSD hardening `ff93ba5` 已验证并 push；
-- [x] GMC capability/build identity 可追踪；hybrid-fix Release probe reports
-  `fork_commit=c7ee708`，对应的实现/测试提交为 `2a8bc79`。
+- [x] GMC capability/build identity 可追踪；final clean Release probe reports
+  `fork_commit=44bfec7`，对应 accepted source HEAD 为
+  `44bfec711151474c85be827d9b95b47e812b5a81`。
 
 ## Build / regression
 
@@ -2685,11 +2709,9 @@ no submodule/gitlink changes
 - [x] QCG default candidate = xTB 6.7.0；
 - [x] official xTB 6.7.1 regression 已记录；
 - [x] 902b313 compatibility reference 已通过；
-- [x] modified Phase 1 fork + xTB 6.7.0 QCG smoke PASS；production optimizer
-  修复后的 follow-up 证据保留于
-  `/home/zbhu/GloMinCluster/crest-build/qcg-xTB-6.7.0-hybrid-fix-20260809`，
-  binary SHA256 为
-  `a1e7e4421f4004931f08403c010e883c47eb258a6d2c077cd00666dacaaee466`。
+- [x] final clean Phase 1 fork + official xTB 6.7.0 QCG smoke PASS；证据保留于
+  `/home/zbhu/GloMinCluster/crest-build/runtime-phase1-final-clean-acceptance-20260809/qcg-official-xtb-6.7.0`，
+  并使用顶部记录的 final binary SHA256。
 
 ## Energy model
 
@@ -3632,17 +3654,17 @@ Phase 1 完成检查表（HI1–HI5 实际 runtime 证据，2026-08-09）：
 - [x] hybrid CREGEN 使用当前 refined raw energy；
 - [x] single-level upstream behavior unchanged。
 
-实际证据：HI1 `--gfn2@gfnff` 的 23 帧 sorted quality ensemble、HI2
-`--gfn2//gfnff` 的 80→37/9 帧 same-run quality-SP ensemble、独立 GFN2/GFN-FF
-single points、production `strucrd` round trips、CREGEN raw-energy output，
-以及 `test/integration/verify_hybrid_runtime.py` 均通过。HI2 same-run
-geometry Kabsch RMSD 最大 `3.36e-11 Å`；plain/extxyz metadata 最大差值为
-`0 Eh`。首个实际 quality raw 与独立 GFN2 SP 差值为 `1e-10 Eh`，与 GFN-FF
-的能量差为 `12.8928374689 Eh`。
+实际最终证据：HI1 `--gfn2@gfnff` 的 28 帧 sorted quality ensemble、HI2
+`--gfn2//gfnff` 的 33 帧 pre-quality 到 9 帧 final quality-SP ensemble、
+独立 GFN2/GFN-FF single points、production `strucrd` round trips、CREGEN
+raw-energy output，以及 `test/integration/verify_hybrid_runtime.py` 均通过。
+最终 HI2 same-run geometry Kabsch RMSD 最大 `0.000e+00 Å`；plain/extxyz
+metadata 最大差值为 `0 Eh`；quality raw 与独立 GFN2 SP 差值为 `3e-10 Eh`，
+与 GFN-FF reference 的能量差约为 `12.89 Eh`。
 
-生产源码唯一修改为 `optimize_geometry` 的 guarded final active-method
-reevaluation（`2a8bc79`）；source/test targeted CTest `6/6`，hybrid-fix
-Release crest-only CTest `19/19`。
+生产源码中的 hybrid fix 是 `optimize_geometry` 的 guarded final
+active-method reevaluation（`2a8bc79`）；final clean Release 的 U/C/H/P
+targeted evidence 为 `8/8`、`7/7`、`8/8`，crest-only CTest `19/19`。
 
 ---
 
