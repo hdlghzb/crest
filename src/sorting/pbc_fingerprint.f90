@@ -191,3 +191,24 @@ contains  !> MODULE PROCEDURES START HERE
 !========================================================================================!
 !========================================================================================!
 end module pbc_fingerprint_module
+
+! OpenBLAS LAPACK's ieeeck_ probes IEEE support with deliberate exceptional
+! arithmetic.  Under CREST's Debug FPE traps that probe aborts before DGESVD
+! can run, even though the target platform provides IEEE arithmetic.  Resolve
+! the external probe to a non-arithmetic IEEE inquiry so the CREST traps remain
+! active for the actual LAPACK computation.
+function crest_ieeeck(ispec,zero,one) bind(C,name='ieeeck_') result(status)
+  use, intrinsic :: iso_c_binding, only: c_float,c_int
+  use, intrinsic :: ieee_arithmetic, only: ieee_support_datatype,ieee_support_inf,ieee_support_nan
+  implicit none
+  integer(c_int),intent(in) :: ispec
+  real(c_float),intent(in) :: zero,one
+  integer(c_int) :: status
+  logical :: supported
+
+  supported = ieee_support_datatype(zero) .and. ieee_support_datatype(one)
+  if (ispec /= 0_c_int) then
+    supported = supported .and. ieee_support_inf(zero) .and. ieee_support_nan(zero)
+  end if
+  status = merge(1_c_int,0_c_int,supported)
+end function crest_ieeeck
