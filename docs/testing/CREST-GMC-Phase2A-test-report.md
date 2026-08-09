@@ -2,9 +2,9 @@
 
 Record date: 2026-08-09
 
-Status: **NOT CLOSED**. A1 final-optimizer controls and A2 final-only
-structural restraints are implemented and targeted-tested. Capability updates,
-standalone equivalence, clean Release acceptance, and the post-implementation
+Status: **NOT CLOSED**. A1 final-optimizer controls, A2 final-only structural
+restraints, and A3 capability fields are implemented and targeted-tested.
+Standalone equivalence, clean Release acceptance, and the post-implementation
 QCG runtime gate remain pending.
 
 ## Source identity
@@ -14,6 +14,7 @@ Repository: /home/zbhu/GloMinCluster/crest
 Branch: glomincluster/crest-3.1-api-v1
 A1 source commit: b64768274d0f6861ab07e14bd46ec901652a7cee
 A2 source commit: 5b63f63ef1e75cf8e9f4513517a3c930b656592b
+A3 source commit: 96a9823f4e50d674c49bd91c854bd42ccffe25fe
 Pinned Phase 1 base: bd27e348ec001e27eab3177586843e8d86f66dc8
 ```
 
@@ -85,9 +86,38 @@ passed all six tests; this was an environment-loading issue, not a source
 regression. No real QCG/xTB runtime was run after A2, so geometry, energy
 components, grow/aISS non-leakage, and rollback behavior remain unaccepted.
 
+## A3 implementation and evidence
+
+Commit `96a9823f4e50d674c49bd91c854bd42ccffe25fe` adds the QCG final capability
+contract without changing `gmc_api_version=1` or removing any Phase 1 fields:
+
+- `qcg_final_optimizer`, `qcg_final_opt_level`, and `qcg_final_constraints` are
+  `true`.
+- `qcg_final_constraint_types` is the stable ordered list
+  `['distance', 'angle', 'dihedral']`.
+- The capability test checks the complete JSON object and the expected short
+  source identity; no geometry, xTB, or normal CREST startup is required.
+
+The A3 commit is present on `origin/glomincluster/crest-3.1-api-v1`. The source
+was reconfigured and rebuilt after that commit in
+`/home/zbhu/GloMinCluster/crest-build/phase2a-a1-cmake-relwithdebinfo-20260809`.
+
+| Check | Result | Evidence |
+|---|---|---|
+| CMake reconfigure | PASS | `phase2a-a3-cmake-configure-20260809.log` |
+| GCC14/OpenBLAS build | PASS | `phase2a-a3-cmake-build-20260809.log`, 42/42 |
+| QCG-final targeted CTest | PASS | `phase2a-a3-targeted-20260809.log`, 3/3 |
+| Capability JSON/provenance | PASS | `phase2a-a3-capabilities-20260809.json`, `fork_commit=96a9823` |
+| Python capability contract | PASS | `test/test_gmc_capabilities.py`, expected `96a9823` |
+
+The rebuilt binary reported API v1, the unchanged Phase 1 fields, all three
+final capability flags, and the distance/angle/dihedral type list. The runtime
+checks used the explicit GCC14/OpenBLAS library path because the system
+`libgfortran` does not provide `GFORTRAN_10`. No real QCG/xTB runtime was run
+after A3.
+
 ## Pending gates
 
-- Capability JSON fields for the QCG final optimizer and constraint types.
 - A1/A2 standalone mdopt-equivalence comparison and final energy-component
   checks on the returned geometry.
 - Meson targeted and full regression, clean Release provenance, ldd,
@@ -98,5 +128,5 @@ Therefore:
 
 ```text
 Phase 2A = NOT CLOSED
-blocker = capability, standalone-energy, Meson/Release, and official xTB 6.7.0 runtime gates are not complete
+blocker = standalone-energy, Meson/Release, and official xTB 6.7.0 runtime gates are not complete
 ```

@@ -1,6 +1,7 @@
 # CREST/GloMinCluster fork: API and provenance
 
-Status: Phase 1 status: **RUNTIME SMOKE-TESTED**.
+Status: Phase 1: **RUNTIME SMOKE-TESTED**. Phase 2A: **IMPLEMENTED TO A3,
+NOT CLOSED**.
 
 CREST GMC fork Phase 1 is runtime smoke-tested on the clean committed source
 acceptance state. The final clean Release acceptance covered provenance,
@@ -65,13 +66,46 @@ v1 currently reports:
   "raw_energy_ranking": true,
   "qcg_single_crest_orchestration": true,
   "qcg_aiss_external_xtb": true,
-  "qcg_aiss_xtb_validated_version": "6.7.0"
+  "qcg_aiss_xtb_validated_version": "6.7.0",
+  "qcg_final_optimizer": true,
+  "qcg_final_opt_level": true,
+  "qcg_final_constraints": true,
+  "qcg_final_constraint_types": ["distance", "angle", "dihedral"]
 }
 ```
 
 `qcg_aiss_xtb_validated_version` is the Phase 1 QCG runtime target validated by
 strict compatibility testing. It is not a runtime version probe, minimum version,
 or claim that CREST supports only that release.
+
+## Phase 2A capability checkpoint
+
+The Phase 2A implementation is split into independently reviewable commits:
+
+- A1 `b647682`: QCG grow-final internal optimizer and final-only opt level;
+- A2 `5b63f63`: numeric distance/angle/dihedral final-only restraints;
+- A3 `96a9823f4e50d674c49bd91c854bd42ccffe25fe`: capability fields and test
+  contract.
+
+A3 preserves API v1 and all Phase 1 fields. The commit is pushed to
+`origin/glomincluster/crest-3.1-api-v1`. A fresh post-A3 CMake RelWithDebInfo
+configure/build was performed with GCC/GFortran 14.2.0 and OpenBLAS 0.3.34;
+the build completed `42/42`, the QCG-final targeted CTest completed `3/3`, and
+the capability contract passed with the expected `fork_commit=96a9823`.
+
+Evidence is retained under
+`/home/zbhu/GloMinCluster/crest-build`:
+
+```text
+phase2a-a3-cmake-configure-20260809.log
+phase2a-a3-cmake-build-20260809.log
+phase2a-a3-targeted-20260809.log
+phase2a-a3-capabilities-20260809.json
+```
+
+This checkpoint is code/build/API evidence only. Standalone mdopt equivalence,
+clean Release/Meson acceptance, and the post-implementation official xTB 6.7.0
+QCG runtime smokes remain pending, so Phase 2A is not closed.
 
 ## Build-time provenance
 
@@ -184,6 +218,9 @@ diagnostic, while CMake Release `pbc_cregen` passed.
 
 These are executable runtime-smoke results, not scientific benchmarks.
 Constraint redesign, QCG final optimizer work, MTD A/B or vtight workflow work,
-and formal release readiness remain outside Phase 1.
+and formal release readiness remain outside Phase 1. The QCG final optimizer and
+final-only structural-restraint implementation is now the active Phase 2A work
+and is implemented through A3, but its runtime and Release gates are pending.
 
-Next stage: **Phase 2 — structural constraints + QCG final optimizer**.
+Next stage: **Phase 2A acceptance gates** — standalone equivalence, Meson/clean
+Release regression, and the official xTB 6.7.0 QCG runtime smokes.
