@@ -13,7 +13,7 @@
 **Phase 1 QCG runtime candidate：** **xTB 6.7.0**
 **已验证兼容参考：** xTB `902b313678b95d793122174df09d590365a669d7` QCG PASS
 **已知不兼容：** official tagged xTB 6.7.1 在固定 CREST 3.1 baseline 上 QCG/aISS FAIL
-**Phase 1 状态：** Phase 1-0 baseline 与 zero-RMSD MTD hardening 已完成并 push；Commit 1/2 已实现，Commit 2 的 CMake/Meson code-level regression 已通过；CREGEN raw ranking、Release 和 QCG smoke 仍待完成
+**Phase 1 状态：** Commit 1–4 已实现并验证；Commit 4 `ac4a94a` 的 hybrid/persistence 回归、clean Release gate 和 modified-fork + xTB 6.7.0 QCG smoke 已完成。当前结果是 runtime-smoke verified，不包含科学 benchmark 或正式 release acceptance
 
 **当前基础证据文档：**
 
@@ -241,15 +241,19 @@ zero-RMSD metadynamics SIGFPE 已在 `ff93ba5` 修复，后续不得再作为已
 
 ### Release
 
-独立 CREST `CMAKE_BUILD_TYPE=Release` **尚未完成验证**。
+独立 CREST `CMAKE_BUILD_TYPE=Release` 已完成验证：最终 clean tree
+`/home/zbhu/GloMinCluster/crest-build/phase1-commit4-release-final-openblas`
+构建 `1600/1600`，crest-only CTest `19/19`，capability reports
+`fork_commit=ac4a94a`。
 
-状态必须写作：
+状态写作：
 
 ```text
-NOT YET VALIDATED
+VALIDATED FOR RUNTIME SMOKE
 ```
 
-它是 Phase 1 最终收口/发布前的后续 gate，而不是 Phase 1-0 已完成事实。
+它已作为 Phase 1 Commit 4 的最终 executable gate 完成；仍不等同于科学
+benchmark 或正式 release acceptance。
 
 ---
 
@@ -2046,15 +2050,15 @@ Phase 1 BLOCKED
 状态：
 
 ```text
-NOT YET VALIDATED
+VALIDATED FOR RUNTIME SMOKE
 ```
 
-Phase 1 功能和 RelWithDebInfo regression 稳定后，必须创建独立 clean Release tree：
+Phase 1 功能和 RelWithDebInfo regression 稳定后，创建独立 clean Release tree：
 
 ```bash
 cmake \
   -S /home/zbhu/GloMinCluster/crest \
-  -B /home/zbhu/GloMinCluster/crest-build/phase1-release-openblas \
+  -B /home/zbhu/GloMinCluster/crest-build/phase1-commit4-release-final-openblas \
   -GNinja \
   -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_C_COMPILER=/share/software/gcc/14.2.0/bin/gcc \
@@ -2062,8 +2066,12 @@ cmake \
   -DCMAKE_Fortran_COMPILER=/share/software/gcc/14.2.0/bin/gfortran \
   -DBLA_VENDOR=OpenBLAS
 
-ninja -C /home/zbhu/GloMinCluster/crest-build/phase1-release-openblas
+ninja -C /home/zbhu/GloMinCluster/crest-build/phase1-commit4-release-final-openblas
 ```
+
+实际最终证据：CMake Release build `1600/1600`，crest-only CTest `19/19`，
+`--version`/`--gmc-capabilities` 报告 `fork_commit=ac4a94a`，GCC14/OpenBLAS
+动态依赖无 `not found`。
 
 Release build 后重新执行：
 
@@ -2654,14 +2662,14 @@ no submodule/gitlink changes
 - [x] fork branch = `glomincluster/crest-3.1-api-v1`；
 - [x] baseline / SOP 已建立；
 - [x] zero-RMSD hardening `ff93ba5` 已验证并 push；
-- [x] GMC capability fork commit `70531d5` 可追踪并已 push。
+- [x] GMC capability/build identity 可追踪；最终 Release probe reports `ac4a94a`。
 
 ## Build / regression
 
 - [x] CMake RelWithDebInfo baseline build/CTest 已验证；
 - [x] Phase 1 modified fork CMake crest-only regression 全 PASS；
 - [x] Phase 1 targeted Meson Debug tests PASS；
-- [ ] clean CREST Release build/test/runtime validation；
+- [x] clean CREST Release build/test/runtime validation；
 - [x] compiler/build metadata 已记录。
 
 完整 Meson 183-test dependency suite 不作为 primary completion checkbox；必须记录是否运行以及与 baseline diagnostics 的差异。
@@ -2671,7 +2679,7 @@ no submodule/gitlink changes
 - [x] QCG default candidate = xTB 6.7.0；
 - [x] official xTB 6.7.1 regression 已记录；
 - [x] 902b313 compatibility reference 已通过；
-- [ ] modified Phase 1 fork + xTB 6.7.0 QCG smoke PASS。
+- [x] modified Phase 1 fork + xTB 6.7.0 QCG smoke PASS。
 
 ## Energy model
 
@@ -2690,12 +2698,12 @@ no submodule/gitlink changes
 
 ## CREGEN
 
-- [ ] sort uses raw；
-- [ ] EWIN uses raw；
-- [ ] ETHR energy check uses raw；
-- [ ] representative uses raw；
-- [ ] elowest uses raw；
-- [ ] constraint-off regression。
+- [x] sort uses raw；
+- [x] EWIN uses raw；
+- [x] ETHR energy check uses raw；
+- [x] representative uses raw；
+- [x] elowest uses raw；
+- [x] constraint-off regression。
 
 ## API
 
@@ -2712,7 +2720,7 @@ no submodule/gitlink changes
 
 - [x] `docs/development/CREST-GMC-FORK.md`；
 - [x] `docs/testing/CREST-GMC-Phase1-test-report.md`；
-- [x] Commit 2 与对应文档提交已 push；
+- [x] Commit 2–4 与对应文档提交已 push；
 - [x] no build/log/binary/raw output committed。
 
 ---

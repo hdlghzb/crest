@@ -1,6 +1,6 @@
 # CREST/GloMinCluster fork: API and provenance
 
-Status: Phase 1 Commit 3, GMC capability/provenance, energy components, and CREGEN raw-energy ranking.
+Status: Phase 1 Commit 4, GMC capability/provenance, energy components, CREGEN raw-energy ranking, and hybrid/persistence regression coverage.
 
 ## Fixed source and runtime boundary
 
@@ -96,9 +96,25 @@ The generic `ensemble_qsort` default remains legacy total-energy sorting; only
 CREGEN callers opt into ranking energy explicitly. Calculator/optimizer/MD
 energies, `coord%energy`, and ordinary XYZ/extxyz `energy=` output remain total.
 
+## Commit 4 hybrid and persistence regression coverage
+
+Commit `ac4a94a` adds the `gmc_hybrid` suite to both CMake and Meson test
+registries. It covers hybrid parser semantics (`gfn2@gfnff`, `gfn2//gfnff`, and
+the explicit opt form), workhorse/quality raw-energy capture, restraint
+decomposition, plain XYZ and extxyz component round trips through CREGEN, and
+legacy XYZ fallback without component metadata. The suite is test coverage only;
+it does not change the hybrid algorithm or QCG workflow.
+
 ## Scope and remaining work
 
 `raw_energy_ranking=true` is backed by the Commit 3 C1-C7 regression suite and
-the existing periodic CREGEN regression. QCG, constraint redesign, and MTD A/B
-or vtight work remain outside this commit. Clean Release validation and the
-modified-fork QCG plus xTB 6.7.0 runtime smoke remain pending.
+the existing periodic CREGEN regression. Commit 4 is covered by CMake Release
+`gmc_hybrid` 8/8 and Meson Debug targeted tests 6/6. A clean final Release tree
+was built with GCC/GFortran 14.2.0 and OpenBLAS 0.3.34 (`1600/1600`), its
+crest-only gate passed `19/19`, and its capability probe reports
+`fork_commit=ac4a94a`.
+
+The final binary passed GFN2, mdopt, NCI-iMTD, both hybrid runtime smokes, and
+the modified-fork QCG smoke with xTB 6.7.0. These are executable runtime-smoke
+results, not scientific benchmarks. Constraint redesign, MTD A/B or vtight
+workflow work, and formal release readiness remain outside this commit.
