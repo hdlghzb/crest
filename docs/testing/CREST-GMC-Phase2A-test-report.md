@@ -174,6 +174,7 @@ Both cases passed the verifier tolerances of `0.01 A`, `2e-6 Eh`, and
 | Meson Debug `pbc_cregen` diagnostic | PASS, 1/1 | `phase2a-c0-fix-meson-debug-pbc-20260809.log` |
 | Meson capability/provenance | PASS | C0 fix capability JSON files, `fork_commit=3a8de63` |
 | Meson dynamic linking | PASS | C0 fix `ldd` files, GCC14/OpenBLAS paths, no missing libraries |
+| `ieeeck_` symbol audit | PASS | `phase2a-c0-fix-nm-20260809.txt`, all three binaries define `T ieeeck_` |
 
 Both build systems report API v1, `fork_commit=3a8de63`, all Phase 1 fields,
 and the A3 final capability fields. The three C0-fix binaries define `ieeeck_`

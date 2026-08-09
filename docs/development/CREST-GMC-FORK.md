@@ -148,6 +148,8 @@ the formerly diagnostic `pbc_cregen` passed `1/1`. All C0-fix binaries report
 API v1 and `fork_commit=3a8de63`; their GCC14/OpenBLAS dynamic-link checks
 passed and each defines `ieeeck_`. Debug compile commands retain
 `-ffpe-trap=invalid,zero,overflow`.
+The retained symbol audit is
+`phase2a-c0-fix-nm-20260809.txt`.
 
 The C0-fix binary SHA256 identities are:
 
