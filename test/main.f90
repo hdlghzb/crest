@@ -20,6 +20,7 @@ program tester
   use test_oniom, only: collect_oniom
   use test_gmc_energy, only: collect_gmc_energy
   use test_gmc_cregen, only: collect_gmc_cregen
+  use test_gmc_hybrid, only: collect_gmc_hybrid
   implicit none
   integer :: stat, is
   character(len=:), allocatable :: suite_name, test_name
@@ -52,7 +53,8 @@ program tester
     new_testsuite("external", collect_external), &
     new_testsuite("oniom", collect_oniom), &
     new_testsuite("gmc_energy", collect_gmc_energy), &
-    new_testsuite("gmc_cregen", collect_gmc_cregen) &
+    new_testsuite("gmc_cregen", collect_gmc_cregen), &
+    new_testsuite("gmc_hybrid", collect_gmc_hybrid) &
   ]
 !&>
 

@@ -18,6 +18,7 @@ set(
   "oniom"
   "gmc_energy"
   "gmc_cregen"
+  "gmc_hybrid"
 )
 set(
   test-srcs
