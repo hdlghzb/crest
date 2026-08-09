@@ -1,6 +1,8 @@
 # CREST/GloMinCluster fork: API and provenance
 
-Status: Phase 1 Commit 4, GMC capability/provenance, energy components, CREGEN raw-energy ranking, and hybrid/persistence regression coverage.
+Status: Phase 1 hybrid runtime closure: Commit 4 GMC capability/provenance,
+energy components, CREGEN raw-energy ranking, persistence regression coverage,
+and follow-up production hybrid integration fix `2a8bc79`.
 
 ## Fixed source and runtime boundary
 
@@ -104,6 +106,24 @@ the explicit opt form), workhorse/quality raw-energy capture, restraint
 decomposition, plain XYZ and extxyz component round trips through CREGEN, and
 legacy XYZ fallback without component metadata. The suite is test coverage only;
 it does not change the hybrid algorithm or QCG workflow.
+
+## Follow-up hybrid runtime closure
+
+The first actual `gfn2@gfnff` runtime exposed a stale-component edge case in
+the quality post-optimization return: the final geometry was correct, but the
+last component metadata was not guaranteed to describe that returned geometry.
+Commit `2a8bc79` makes a guarded final active-calculator reevaluation for
+successful ordinary optimizations and adds a focused hybrid optimization
+regression plus the no-dependency runtime artifact verifier
+`test/integration/verify_hybrid_runtime.py`.
+
+The fix was validated by actual `--gfn2@gfnff` and `--gfn2//gfnff` workflows,
+independent GFN2/GFN-FF single points, production XYZ/extxyz round trips, and
+CREGEN on the refined ensemble. The hybrid-fix Release crest-only gate passed
+`19/19`; the targeted fix gate passed `6/6`. The binary used for these runtime
+smokes reports `fork_commit=c7ee708` because it was built from the same
+production-source state before the test-only commit; the implementation/test
+commit is `2a8bc79`.
 
 ## Scope and remaining work
 

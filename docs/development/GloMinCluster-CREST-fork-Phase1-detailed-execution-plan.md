@@ -13,7 +13,9 @@
 **Phase 1 QCG runtime candidate：** **xTB 6.7.0**
 **已验证兼容参考：** xTB `902b313678b95d793122174df09d590365a669d7` QCG PASS
 **已知不兼容：** official tagged xTB 6.7.1 在固定 CREST 3.1 baseline 上 QCG/aISS FAIL
-**Phase 1 状态：** Commit 1–4 已实现并验证；Commit 4 `ac4a94a` 的 hybrid/persistence 回归、clean Release gate 和 modified-fork + xTB 6.7.0 QCG smoke 已完成。当前结果是 runtime-smoke verified，不包含科学 benchmark 或正式 release acceptance
+**Phase 1 状态：** Commit 1–4 已实现并验证；后续 hybrid runtime 修复与
+HI1–HI5 实际集成已在 `2a8bc79` 完成。当前结果为
+**RUNTIME SMOKE-TESTED**，不包含科学 benchmark 或正式 release acceptance。
 
 **当前基础证据文档：**
 
@@ -2069,8 +2071,11 @@ cmake \
 ninja -C /home/zbhu/GloMinCluster/crest-build/phase1-commit4-release-final-openblas
 ```
 
-实际最终证据：CMake Release build `1600/1600`，crest-only CTest `19/19`，
-`--version`/`--gmc-capabilities` 报告 `fork_commit=ac4a94a`，GCC14/OpenBLAS
+Commit 4 的历史最终证据为 CMake Release build `1600/1600`、crest-only CTest
+`19/19`。hybrid-fix Release tree
+`/home/zbhu/GloMinCluster/crest-build/phase1-hybrid-fix-release-final-openblas`
+的 crest-only CTest 为 `19/19`，targeted fix gate 为 `6/6`；其
+`--version`/`--gmc-capabilities` 报告 `fork_commit=c7ee708`，GCC14/OpenBLAS
 动态依赖无 `not found`。
 
 Release build 后重新执行：
@@ -2662,7 +2667,8 @@ no submodule/gitlink changes
 - [x] fork branch = `glomincluster/crest-3.1-api-v1`；
 - [x] baseline / SOP 已建立；
 - [x] zero-RMSD hardening `ff93ba5` 已验证并 push；
-- [x] GMC capability/build identity 可追踪；最终 Release probe reports `ac4a94a`。
+- [x] GMC capability/build identity 可追踪；hybrid-fix Release probe reports
+  `fork_commit=c7ee708`，对应的实现/测试提交为 `2a8bc79`。
 
 ## Build / regression
 
@@ -3571,16 +3577,18 @@ parse_hybrid.f90
 
 原则上只测试、不修改，除非实际发现 upstream bug。
 
-`parallel.f90` 很可能必须修改，因为：
+`parallel.f90` 必须审计，因为：
 
 ```text
 crest_sploop
 crest_oloop
 ```
 
-目前只同步 legacy energy。
+本次审计确认 `crest_sploop` 和 `crest_oloop` 已通过
+`copy_energy_components` 同步 component metadata，不需要在该文件新增修改。
 
-`refine.f90` 必须审计并按最小必要范围修复 component synchronization。
+`refine.f90` 已审计：singlepoint 路径保留 quality-stage components，
+correction/deltaG 路径按设计 invalidate metadata；本次不需要新增修改。
 
 ---
 
@@ -3603,22 +3611,34 @@ rg -n 'refine%singlepoint|refine%geoopt|refine%post_opt' src
 
 # 66. Hybrid 兼容性的完成条件
 
-Phase 1 完成检查表新增：
+Phase 1 完成检查表（HI1–HI5 实际 runtime 证据，2026-08-09）：
 
-- [ ] `A@B` parser semantics unchanged；
-- [ ] `A//B` parser semantics unchanged；
-- [ ] `A/opt/B` semantics unchanged；
-- [ ] workhorse stage raw = B；
-- [ ] quality SP stage raw = A；
-- [ ] quality OPT/post-OPT stage raw = A；
-- [ ] restraint decomposition independent of workhorse/quality method；
-- [ ] `crest_sploop` 不丢 component metadata；
-- [ ] `crest_oloop` 不丢 component metadata；
-- [ ] `crest_refine` 不产生 stale raw energy；
-- [ ] hybrid XYZ roundtrip；
-- [ ] hybrid extxyz roundtrip；
-- [ ] hybrid CREGEN 使用当前 refined raw energy；
-- [ ] single-level upstream behavior unchanged。
+- [x] `A@B` parser semantics unchanged；
+- [x] `A//B` parser semantics unchanged；
+- [x] `A/opt/B` semantics unchanged；
+- [x] workhorse stage raw = B；
+- [x] quality SP stage raw = A；
+- [x] quality OPT/post-OPT stage raw = A；
+- [x] restraint decomposition independent of workhorse/quality method；
+- [x] `crest_sploop` 不丢 component metadata；
+- [x] `crest_oloop` 不丢 component metadata；
+- [x] `crest_refine` 不产生 stale raw energy；
+- [x] hybrid XYZ roundtrip；
+- [x] hybrid extxyz roundtrip；
+- [x] hybrid CREGEN 使用当前 refined raw energy；
+- [x] single-level upstream behavior unchanged。
+
+实际证据：HI1 `--gfn2@gfnff` 的 23 帧 sorted quality ensemble、HI2
+`--gfn2//gfnff` 的 80→37/9 帧 same-run quality-SP ensemble、独立 GFN2/GFN-FF
+single points、production `strucrd` round trips、CREGEN raw-energy output，
+以及 `test/integration/verify_hybrid_runtime.py` 均通过。HI2 same-run
+geometry Kabsch RMSD 最大 `3.36e-11 Å`；plain/extxyz metadata 最大差值为
+`0 Eh`。首个实际 quality raw 与独立 GFN2 SP 差值为 `1e-10 Eh`，与 GFN-FF
+的能量差为 `12.8928374689 Eh`。
+
+生产源码唯一修改为 `optimize_geometry` 的 guarded final active-method
+reevaluation（`2a8bc79`）；source/test targeted CTest `6/6`，hybrid-fix
+Release crest-only CTest `19/19`。
 
 ---
 
