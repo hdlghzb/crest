@@ -173,6 +173,11 @@ subroutine crest_dry_run(env,tim)
     write (stdout,'(4x,a,t35,": ",l6)') 'SHAKE',env%mddat%shake
     write (stdout,'(4x,a,t35,": ",a)') 'thermostat',trim(env%mddat%thermotype)
   end if
+  if (env%gmc_mtd_task_final_opt) then
+    write (stdout,'(2x,a)') 'GMC task-final optimization: task_final_opt=true'
+  else
+    write (stdout,'(2x,a)') 'GMC task-final optimization: task_final_opt=false'
+  end if
   write (stdout,*)
 
 !========================================================================================!

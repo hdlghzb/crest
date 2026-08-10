@@ -366,6 +366,8 @@ subroutine confscript_morehelp(flag)
     call help_opt('-origin',fw,'Track conformer origin step  [default]')
     call help_opt('-keepdir',fw,'Keep temporary working directories')
     call help_opt('-NCI',fw,'NCI cluster mode (flat-bottom wall + specialised MTD settings)')
+    call help_opt('--gmc-mtd-task-final-opt <on|off>',fw, &
+      'GMC iMTD task-final optimization  [default: on]')
     call help_opt('-wscal <float>',fw,'Scale wall potential sphere radius')
     call help_opt('-hflip/-noflip',fw,'OH proton flip after MTD  [default: OFF]')
     call help_opt('-maxflip <int>',fw,'Max OH flip attempts  [default: 1000]')

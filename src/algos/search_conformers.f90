@@ -315,15 +315,23 @@ subroutine crest_search_imtdgc(env,tim)
 
 !==========================================================!
 !>--- final ensemble optimization
-  write (stdout,'(/)')
-  write (stdout,'(3x,''================================================'')')
-  write (stdout,'(3x,''|           Final Geometry Optimization        |'')')
-  write (stdout,'(3x,''================================================'')')
-  call tim%start(3,'Geometry optimization')
-  call checkname_xyz(crefile,atmp,str)
-  call crest_multilevel_wrap(env,trim(atmp),0)
-  call tim%stop(3)
-  if (env%iostatus_meta .ne. 0) return
+  if (env%gmc_mtd_task_final_opt) then
+    write (stdout,'(/)')
+    write (stdout,'(3x,''================================================'')')
+    write (stdout,'(3x,''|           Final Geometry Optimization        |'')')
+    write (stdout,'(3x,''================================================'')')
+    call tim%start(3,'Geometry optimization')
+    call checkname_xyz(crefile,atmp,str)
+    call crest_multilevel_wrap(env,trim(atmp),0)
+    call tim%stop(3)
+    if (env%iostatus_meta .ne. 0) return
+    write (stdout,'(1x,a)') 'GMC provenance: task_final_opt=true source_geometry_level=' &
+      // trim(optlevflag(env%optlev))
+  else
+    write (stdout,'(/,1x,a)') &
+      'GMC task final optimization skipped; retaining normal iMTD geometry.'
+    write (stdout,'(1x,a)') 'GMC provenance: task_final_opt=false source_geometry_level=normal'
+  end if
 
 !==========================================================!
 !>--- run is complete: drop the restart checkpoint

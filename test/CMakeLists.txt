@@ -63,3 +63,10 @@ add_test(
     "${CMAKE_CURRENT_SOURCE_DIR}/test_gmc_qcg_final.py"
     "$<TARGET_FILE:${PROJECT_NAME}-exe>"
 )
+add_test(
+  NAME "${PROJECT_NAME}/gmc_mtd_task_final_opt"
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/test_gmc_mtd_task_final_opt.py"
+    "$<TARGET_FILE:${PROJECT_NAME}-exe>"
+)

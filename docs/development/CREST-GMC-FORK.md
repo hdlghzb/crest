@@ -70,6 +70,7 @@ v1 currently reports:
   "qcg_final_optimizer": true,
   "qcg_final_opt_level": true,
   "qcg_final_constraints": true,
+  "mtd_task_final_opt": true,
   "qcg_final_constraint_types": ["distance", "angle", "dihedral"]
 }
 ```
@@ -77,6 +78,38 @@ v1 currently reports:
 `qcg_aiss_xtb_validated_version` is the Phase 1 QCG runtime target validated by
 strict compatibility testing. It is not a runtime version probe, minimum version,
 or claim that CREST supports only that release.
+
+## Phase 1 P1-B: MTD task-final optimization control
+
+The development branch `phase1/B-mtd-task-final-opt` adds the GMC-facing
+control:
+
+```text
+--gmc-mtd-task-final-opt on|off
+```
+
+The default is `on`, preserving the existing iMTD-GC behavior. The `off` mode
+skips only the final ensemble geometry optimization after the iMTD iterations;
+the crude/normal optimization stages inside each iteration, QCG final
+optimization, standalone 2.1 optimization, GC crossing, and constraint
+semantics are unchanged. `-dry` reports the resolved `task_final_opt` value.
+
+After a successful final optimization or an intentional skip, the iMTD log
+records `task_final_opt` and `source_geometry_level`. The on path derives the
+source level from the actual `--optlev` setting; the off path records the
+retained normal iMTD geometry.
+
+The P1-B development evidence uses GCC/GFortran 14.2.0, OpenBLAS 0.3.34,
+and a clean CMake Release tree:
+
+- build: `crest-build/p1b-cmake-release-submodules-20260811`, `1602/1602`;
+- CREST-only CTest: `22/22`;
+- capability and parser/scope/runtime test: PASS;
+- short 9-atom GFN-FF/NCI-iMTD on/off runtime: both normal termination, equal
+  MTD iteration counts, final optimization present only for `on`.
+
+This is a development checkpoint and runtime smoke evidence, not scientific
+MTD A/B validation or formal release acceptance.
 
 ## Phase 2A capability checkpoint
 

@@ -45,7 +45,7 @@ contains
       '"--gfn2","--gfnff"],' // &
       '"qcg_final_optimizer":true,"qcg_final_opt_level":true,' // &
       '"qcg_final_constraints":true,"qcg_final_constraint_types":' // &
-      '["distance","angle","dihedral"]}'
+      '["distance","angle","dihedral"],"mtd_task_final_opt":true}'
     flush (output_unit)
     call gmc_exit(0_c_int)
   end subroutine print_gmc_capabilities

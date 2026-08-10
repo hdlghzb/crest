@@ -69,3 +69,11 @@ test(
     meson.project_build_root() / 'crest',
   ],
 )
+test(
+  'crest/gmc_mtd_task_final_opt',
+  python3,
+  args : [
+    files('test_gmc_mtd_task_final_opt.py'),
+    meson.project_build_root() / 'crest',
+  ],
+)

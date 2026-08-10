@@ -254,6 +254,7 @@ subroutine parseflags(env,arg,nra)
   env%restartopt = .false.  !> jump to second iteration of the Multilevel optimization (V2 only)
   env%rotamermds = .true.   !> do some additional mds for the lowermost conformers in V2 (after first step of multilevel optimization)
   env%gcmultiopt = .true.   !> optimize in two steps after GC (loose/vtight) in V2 ? !SG
+  env%gmc_mtd_task_final_opt = .true. !> GMC task-final optimization
   env%performMTD = .true.   !> do the MTD in V2
   env%metadynset = .false.  !> is the metadyn prepared? (V2)
   env%useqmdff = .false.    !> use qmdff for the MDs?
@@ -1112,6 +1113,29 @@ subroutine parseflags(env,arg,nra)
         case ('-nogcmopt')                        !> GC single level optimization in V2
           processedarg(i) = .true.
           env%gcmultiopt = .false.
+
+        case ('-gmc-mtd-task-final-opt')           !> GMC iMTD task-final optimization
+          processedarg(i) = .true.
+          if (i+1 .gt. nra .or. len_trim(arg1) == 0) then
+            call parseflags_missing(argument)
+            call creststop(status_args)
+          end if
+          select case (trim(arg1))
+          case ('on')
+            env%gmc_mtd_task_final_opt = .true.
+          case ('off')
+            env%gmc_mtd_task_final_opt = .false.
+          case default
+            write (stdout,'(1x,a,1x,a)') trim(arg(i)), &
+            & 'requires on or off'
+            call creststop(status_args)
+          end select
+          processedarg(i+1) = .true.
+          if (env%gmc_mtd_task_final_opt) then
+            write (stdout,'(2x,a,1x,a)') trim(arg(i)), 'task_final_opt=true'
+          else
+            write (stdout,'(2x,a,1x,a)') trim(arg(i)), 'task_final_opt=false'
+          end if
 
         case ('-qmdff')                           !> use QMDFF for the MDs in V2?
           processedarg(i) = .true.

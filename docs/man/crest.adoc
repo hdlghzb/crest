@@ -335,6 +335,13 @@ The following flags apply constraints to *all* calculations made by CREST.
   NCI cluster mode: flat-bottom wall potential and specialised MTD settings
   suited for weakly-bound complexes.
 
+*--gmc-mtd-task-final-opt* _on|off_::
+  Enable or disable the final optimization at the selected optimization level
+  after all iMTD iterations in one GMC MTD task. GMC normally selects *tight*
+  with *--optlev tight*. The iteration-level crude and normal optimizations,
+  CREGEN, constraints, and energy-component output are unaffected.
+  [_default_: *on*]
+
 *-wscal* _float_::
   Scale the wall potential sphere radius.
 

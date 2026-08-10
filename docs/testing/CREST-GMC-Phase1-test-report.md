@@ -9,6 +9,29 @@ not the final accepted source/binary identity. CREGEN uses
 `coord%ranking_energy()` for scientific ordering and filtering; legacy or
 invalid component metadata falls back to `coord%energy`.
 
+## P1-B development addendum — 2026-08-11
+
+The separate branch `phase1/B-mtd-task-final-opt` adds the GMC-facing
+`--gmc-mtd-task-final-opt on|off` control and the capability field
+`mtd_task_final_opt=true`. Its default is `on`; `off` gates only the final
+iMTD ensemble optimization after all iterations. This addendum does not alter
+the historical accepted binary identity below and does not claim scientific
+MTD A/B acceptance.
+
+Validation was performed in a fresh CMake Release tree with GCC/GFortran 14.2.0
+and OpenBLAS 0.3.34 (`LD_LIBRARY_PATH` set to those runtime libraries):
+
+| Check | Result | Evidence |
+|---|---|---|
+| CMake Release build | PASS | `p1b-cmake-release-submodules-20260811`, 1602/1602 |
+| CREST-only CTest | PASS | 22/22, including capability and new MTD control test |
+| Capability JSON | PASS | `mtd_task_final_opt: true` |
+| Parser/default/invalid-value checks | PASS | dry-run default/on/off; invalid value fails fast |
+| Runtime scope smoke | PASS | 9-atom GFN-FF/NCI-iMTD: equal iteration counts; on-only final optimization |
+
+The runtime smoke is code-level evidence only. Scientific MTD A/B comparison,
+benchmarking, and formal release acceptance remain outside this checkpoint.
+
 ## Final accepted inputs
 
 ```text

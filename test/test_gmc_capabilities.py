@@ -24,6 +24,7 @@ EXPECTED = {
     "qcg_final_opt_level": True,
     "qcg_final_constraints": True,
     "qcg_final_constraint_types": ["distance", "angle", "dihedral"],
+    "mtd_task_final_opt": True,
 }
 
 
