@@ -164,6 +164,9 @@ subroutine parseflags(env,arg,nra)
   env%gfnver = '--gfn2'          !> selct the GFN verison as complete flag(!)
   env%gfnver2 = ''               !> a second level, used for multilevel post-optimization
   env%ensemble_opt = '--gff'     !> qcg specific method for ensemble search and optimization
+  env%qcg_final_method = 'inherit'
+  env%qcg_final_method_set = .false.
+  env%final_gfn2_opt_set = .false.
 
 !--- cregen settings
   env%confgo = .false.           !> perform confg (cregen) subroutine only
@@ -2895,10 +2898,31 @@ subroutine parseflags(env,arg,nra)
       case ('-fin_opt_gfn2')
         processedarg(i) = .true.
         env%final_gfn2_opt = .true.
+        env%final_gfn2_opt_set = .true.
 
       case ('-no_fin_opt_gfn2')
         processedarg(i) = .true.
         env%final_gfn2_opt = .false.
+        env%final_gfn2_opt_set = .false.
+
+      case ('-qcg-final-method')
+        processedarg(i) = .true.
+        if (i+1 .gt. nra .or. len_trim(arg1) == 0) then
+          call parseflags_missing(trim(arg(i)))
+          call creststop(status_args)
+        end if
+        select case (trim(arg1))
+        case ('inherit','--gfn1','--gfn2','--gfnff')
+          env%qcg_final_method = trim(arg1)
+          env%qcg_final_method_set = .true.
+        case default
+          write (stdout,'(1x,a,1x,a)') trim(arg(i)), &
+          & 'requires inherit, --gfn1, --gfn2, or --gfnff'
+          call creststop(status_args)
+        end select
+        processedarg(i+1) = .true.
+        write (stdout,'(2x,a,1x,a)') trim(arg(i)), &
+        & 'final-only method '//trim(env%qcg_final_method)
 
       case ('-qcg-final-cinp')
         processedarg(i) = .true.
@@ -3313,6 +3337,12 @@ subroutine parseflags(env,arg,nra)
   end if
   if (env%ensemble_opt == '--gfn2'.or.env%gfnver == '--gfn2') &
           & env%final_gfn2_opt = .false. !Prevent additional opt.
+
+  if (env%qcg_final_method_set.and.env%final_gfn2_opt_set) then
+    write (stdout,'(1x,a)') &
+    & '--fin_opt_gfn2 conflicts with explicit --qcg-final-method.'
+    call creststop(status_config)
+  end if
 
   if (env%useqmdff) then
     env%autozsort = .false.

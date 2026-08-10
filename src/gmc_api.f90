@@ -41,6 +41,8 @@ contains
       '","energy_components":true,"raw_energy_ranking":true,' // &
       '"qcg_single_crest_orchestration":true,"qcg_aiss_external_xtb":true,' // &
       '"qcg_aiss_xtb_validated_version":"' // GMC_AISS_XTB_VERSION // '",' // &
+      '"qcg_final_method":true,"qcg_final_methods":["inherit","--gfn1",' // &
+      '"--gfn2","--gfnff"],' // &
       '"qcg_final_optimizer":true,"qcg_final_opt_level":true,' // &
       '"qcg_final_constraints":true,"qcg_final_constraint_types":' // &
       '["distance","angle","dihedral"]}'

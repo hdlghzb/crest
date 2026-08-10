@@ -203,6 +203,7 @@ subroutine qcg_final_opt_internal(env,solu,clus,iostatus)
   molin = clus%as_coord()
   allocate (grad(3,molin%nat),source=0.0_wp)
   call env2calc(env,calc,molin)
+  env%gfnver = gfnver_tmp
 
   ! Grow-only whole-solute protection must not reach the final free-cluster opt.
   if (allocated(calc%freezelist)) deallocate (calc%freezelist)
@@ -224,6 +225,10 @@ subroutine qcg_final_opt_internal(env,solu,clus,iostatus)
   calc%optlev = nint(env%optlev)
   if (env%qcg_final_optlev_set) calc%optlev = nint(env%qcg_final_optlev)
 
+  if (env%qcg_final_method_set.and.trim(env%qcg_final_method) /= 'inherit') then
+    call qcg_final_set_calc_method(calc,trim(env%qcg_final_method))
+  end if
+
   call optimize_geometry(molin,molout,calc,energy,grad,.false.,.false.,io)
   if (io == 0) then
     call clus%from_coord(molout)
@@ -235,6 +240,43 @@ subroutine qcg_final_opt_internal(env,solu,clus,iostatus)
   deallocate (grad)
   env%gfnver = gfnver_tmp
 end subroutine qcg_final_opt_internal
+
+!--------------------------------------------------------------------------------------------
+! Replace only the primary calculator level used by the QCG grow-final optimizer.
+! The parser limits method to the cases below; all other calculator settings remain intact.
+!--------------------------------------------------------------------------------------------
+subroutine qcg_final_set_calc_method(calc,method)
+  use iso_fortran_env,only:wp => real64
+  use crest_calculator
+  implicit none
+
+  type(calcdata),intent(inout) :: calc
+  character(len=*),intent(in) :: method
+
+  if (calc%ncalculations < 1) return
+
+  if (allocated(calc%calcs(1)%tblite)) deallocate (calc%calcs(1)%tblite)
+  if (allocated(calc%calcs(1)%g0calc)) deallocate (calc%calcs(1)%g0calc)
+  if (allocated(calc%calcs(1)%ff_dat)) deallocate (calc%calcs(1)%ff_dat)
+  if (allocated(calc%calcs(1)%config)) deallocate (calc%calcs(1)%config)
+  if (allocated(calc%calcs(1)%occ)) deallocate (calc%calcs(1)%occ)
+  if (allocated(calc%calcs(1)%tbliteparam)) deallocate (calc%calcs(1)%tbliteparam)
+  if (allocated(calc%calcs(1)%gff_fragments)) deallocate (calc%calcs(1)%gff_fragments)
+
+  select case (trim(method))
+  case ('--gfn1')
+    calc%calcs(1)%id = jobtype%tblite
+    calc%calcs(1)%tblitelvl = 1
+    calc%calcs(1)%etemp = 300.0_wp
+  case ('--gfn2')
+    calc%calcs(1)%id = jobtype%tblite
+    calc%calcs(1)%tblitelvl = 2
+    calc%calcs(1)%etemp = 300.0_wp
+  case ('--gfnff')
+    calc%calcs(1)%id = jobtype%gfnff
+  end select
+  call calc%calcs(1)%autocomplete(1)
+end subroutine qcg_final_set_calc_method
 
 subroutine xtb_md_ensemble_qcg(env,solu,solv,clus,resultspath)
   use crest_parameters

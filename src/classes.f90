@@ -607,6 +607,9 @@ module crest_data
     logical :: ext                   !> external
     logical :: extLFER = .false.     !> read in external LFER parameters
     logical :: FINAL_GFN2_OPT = .false.
+    logical :: final_gfn2_opt_set = .false. !> --fin_opt_gfn2 was explicitly supplied
+    character(len=20) :: qcg_final_method = 'inherit' !> QCG grow-final-only calculator method
+    logical :: qcg_final_method_set = .false. !> user supplied final-only method
     logical :: fullcre = .false.     !> calculate exact rotamer degeneracies
     logical :: gbsa = .false.        !> use gbsa
     logical :: gcmultiopt            !> 2 level optimization for GC in V2
@@ -1356,6 +1359,8 @@ contains  !> MODULE PROCEDURES START HERE
     self%docking_qcg_flag = src%docking_qcg_flag
     self%qcg_final_optlev = src%qcg_final_optlev
     self%qcg_final_optlev_set = src%qcg_final_optlev_set
+    self%qcg_final_method = src%qcg_final_method
+    self%qcg_final_method_set = src%qcg_final_method_set
     if (allocated(self%qcg_final_cinp)) deallocate (self%qcg_final_cinp)
     if (allocated(src%qcg_final_cinp)) self%qcg_final_cinp = src%qcg_final_cinp
     if (allocated(src%directed_file))   self%directed_file   = src%directed_file
@@ -1434,6 +1439,7 @@ contains  !> MODULE PROCEDURES START HERE
     self%ext            = src%ext
     self%extLFER        = src%extLFER
     self%FINAL_GFN2_OPT = src%FINAL_GFN2_OPT
+    self%final_gfn2_opt_set = src%final_gfn2_opt_set
     self%fullcre        = src%fullcre
     self%gbsa           = src%gbsa
     self%gcmultiopt     = src%gcmultiopt
