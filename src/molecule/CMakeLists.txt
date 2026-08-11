@@ -18,6 +18,7 @@ set(dir "${CMAKE_CURRENT_SOURCE_DIR}")
 
 list(APPEND srcs
   "${dir}/parameters.f90"
+  "${dir}/gmc_provenance_format.f90"
   "${dir}/io.f90"
   "${dir}/type_components.f90" 
   "${dir}/type_ensemble.f90"
@@ -27,7 +28,6 @@ list(APPEND srcs
 )
 
 set(srcs ${srcs} PARENT_SCOPE)
-
 
 
 

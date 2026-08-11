@@ -52,6 +52,20 @@ def main() -> int:
     api = (source_root / "src/gmc_api.f90").read_text()
     require_fragments(
         classes,
+        ("logical :: gmc_mtd_task_final_provenance = .false.",),
+        "provenance default",
+    )
+    require_fragments(
+        confparse,
+        (
+            "case ('-gmc-mtd-task-final-provenance','--gmc-mtd-task-final-provenance')",
+            "'task_final_provenance=true'",
+            "'task_final_provenance=false'",
+        ),
+        "provenance parser",
+    )
+    require_fragments(
+        classes,
         (
             "logical :: gmc_mtd_task_final_opt = .true.",
             "self%gmc_mtd_task_final_opt = src%gmc_mtd_task_final_opt",
@@ -147,6 +161,14 @@ def main() -> int:
                     f"runtime {value} failed with code {result.returncode}:\n"
                     f"{result.stdout[-2000:]}\n{result.stderr[-1000:]}"
                 )
+            if any(
+                (runtime_dir / artifact).exists()
+                for artifact in (
+                    "gmc_task_final_normal_input.xyz",
+                    "gmc_task_final_provenance.tsv",
+                )
+            ):
+                raise AssertionError("provenance artifacts were produced with the feature disabled")
             runtime[value] = result.stdout
 
         completed = {

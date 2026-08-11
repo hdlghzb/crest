@@ -614,6 +614,7 @@ module crest_data
     logical :: gbsa = .false.        !> use gbsa
     logical :: gcmultiopt            !> 2 level optimization for GC in V2
     logical :: gmc_mtd_task_final_opt = .true. !> GMC iMTD task-final optimization
+    logical :: gmc_mtd_task_final_provenance = .false. !> GMC local task-final provenance
     logical :: gradsp = .true.       !> turn on/off gradient calculation in singlepoint
     logical :: heavyrmsd = .false.   !> use only heavy atoms for RMSD in CREGEN?
     logical :: inplaceMode = .true.  !> in-place mode: optimization dirs are created "on-the-fly"
@@ -1445,6 +1446,7 @@ contains  !> MODULE PROCEDURES START HERE
     self%gbsa           = src%gbsa
     self%gcmultiopt     = src%gcmultiopt
     self%gmc_mtd_task_final_opt = src%gmc_mtd_task_final_opt
+    self%gmc_mtd_task_final_provenance = src%gmc_mtd_task_final_provenance
     self%gradsp         = src%gradsp
     self%heavyrmsd      = src%heavyrmsd
     self%inplaceMode    = src%inplaceMode

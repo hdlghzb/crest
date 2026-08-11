@@ -93,6 +93,7 @@ contains  !> MODULE PROCEDURES START HERE
     molnew%nat = mol%nat
     molnew%wrextxyz = .true.
     if (allocated(mol%lat)) molnew%lat = mol%lat
+    if (allocated(mol%origin)) molnew%origin = mol%origin
     !$omp end critical
     nat3 = 3*mol%nat
 

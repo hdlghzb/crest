@@ -34,6 +34,7 @@ module molecule_type_ensemble
   use molecule_io
   use molecule_type
   use molecule_type_components
+  use gmc_provenance_format, only : gmc_extract_token
   implicit none
 
 ! ══════════════════════════════════════════════════════════════════════════════
@@ -436,6 +437,9 @@ contains  !> MODULE PROCEDURES START HERE
     real(wp) :: energy,energy_raw,energy_restraint,energy_total
     logical :: energy_components_found
     character(len=32) :: eu,fu
+    character(len=5000) :: ext_comment
+    character(len=64) :: token
+    logical :: token_found,token_malformed
 
     is_extxyz = sgrep(fname,'Properties=',casesensitive=.false.)
 
@@ -453,7 +457,8 @@ contains  !> MODULE PROCEDURES START HERE
         &                      energy_raw=energy_raw, &
         &                      energy_restraint=energy_restraint, &
         &                      energy_total=energy_total, &
-        &                      energy_components_found=energy_components_found)
+        &                      energy_components_found=energy_components_found, &
+        &                      comment_out=ext_comment)
         if (success) then
           select case (trim(eu))
           case ('hartree','ha','au')
@@ -478,6 +483,9 @@ contains  !> MODULE PROCEDURES START HERE
           end if
           structures(ii)%wrextxyz = .true.
           structures(ii)%nat = nat
+          call gmc_extract_token(ext_comment,token,token_found,token_malformed)
+          if (token_malformed) error stop 'Malformed GMC task-final provenance marker.'
+          if (token_found) structures(ii)%origin = token
         end if
       end do
       close (iunit)
@@ -506,6 +514,9 @@ contains  !> MODULE PROCEDURES START HERE
           structures(i)%energy = eread(i)
         end if
         structures(i)%comment = trim(comments(i))
+        call gmc_extract_token(comments(i),token,token_found,token_malformed)
+        if (token_malformed) error stop 'Malformed GMC task-final provenance marker.'
+        if (token_found) structures(i)%origin = token
       end do
       deallocate (comments,eread,nats,ats,xyz)
     end if

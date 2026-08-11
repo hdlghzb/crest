@@ -35,6 +35,8 @@ subroutine crest_search_imtdgc(env,tim)
   use utilities
   use cregen_interface
   use crest_restartlog
+  use gmc_task_final_provenance,only:gmc_task_final_active, &
+    & gmc_task_final_assign,gmc_task_final_begin,gmc_task_final_finalize
   implicit none
   type(systemdata),intent(inout) :: env
   type(timer),intent(inout)      :: tim
@@ -315,6 +317,11 @@ subroutine crest_search_imtdgc(env,tim)
 
 !==========================================================!
 !>--- final ensemble optimization
+  if (env%gmc_mtd_task_final_provenance .and. .not.env%gmc_mtd_task_final_opt) then
+    write (stdout,'(a)') '**ERROR** task-final provenance requires task_final_opt=true.'
+    env%iostatus_meta = status_failed
+    return
+  end if
   if (env%gmc_mtd_task_final_opt) then
     write (stdout,'(/)')
     write (stdout,'(3x,''================================================'')')
@@ -322,6 +329,10 @@ subroutine crest_search_imtdgc(env,tim)
     write (stdout,'(3x,''================================================'')')
     call tim%start(3,'Geometry optimization')
     call checkname_xyz(crefile,atmp,str)
+    if (env%gmc_mtd_task_final_provenance) then
+      call rdensembleparam(trim(atmp),nat,nall)
+      call gmc_task_final_begin(trim(atmp),nall)
+    end if
     call crest_multilevel_wrap(env,trim(atmp),0)
     call tim%stop(3)
     if (env%iostatus_meta .ne. 0) return
@@ -348,6 +359,7 @@ subroutine crest_search_imtdgc(env,tim)
   write (stdout,'(/)')
   call smallhead('Final Ensemble Information')
   call V2terminating()
+  if (gmc_task_final_active()) call gmc_task_final_finalize('crest_rotamers.xyz')
 
 !==========================================================!
   return
@@ -453,6 +465,8 @@ subroutine crest_multilevel_oloop(env,ensnam,multilevel_in,mtd_iter_in)
   use utilities
   use parallel_interface
   use crest_restartlog
+  use gmc_task_final_provenance,only:gmc_task_final_active, &
+    & gmc_task_final_assign
   implicit none
   type(systemdata) :: env
   character(len=*),intent(in) :: ensnam
@@ -513,6 +527,7 @@ subroutine crest_multilevel_oloop(env,ensnam,multilevel_in,mtd_iter_in)
     return
   end if
   call rdensemble(ensnam,nall,structures)
+  if (gmc_task_final_active()) call gmc_task_final_assign(structures)
 
   write (stdout,'(1x,a,i0,a,a,a)') 'Optimizing all ',nall, &
   & ' structures from file "',trim(ensnam),'" ...'
@@ -548,6 +563,7 @@ subroutine crest_multilevel_oloop(env,ensnam,multilevel_in,mtd_iter_in)
       !>--- CREGEN sorting
       call sort_and_check(env,trim(inpnam))
       call checkname_xyz(crefile,inpnam,outnam)
+      ! Provenance is finalized after native V2terminating renames the final file.
 ! ── restart checkpoint: intermediate ensemble after this opt. level ──
       if (mtd_iter_in > 0) then
         call write_restart_log(env%crestver,'mtd_trj',env%nreset, &

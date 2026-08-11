@@ -16,6 +16,7 @@
 
 srcs += files(
   'parameters.f90',
+  'gmc_provenance_format.f90',
   'type.f90',
   'io.f90',
   'type_components.f90',

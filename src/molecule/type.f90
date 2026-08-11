@@ -22,6 +22,7 @@ module molecule_type
   use molecule_parameters
   use molecule_io
   use molecule_type_components
+  use gmc_provenance_format, only : gmc_append_token, gmc_token_valid
 !> simple geomerty and vector operations
   use geo
 !> element symbols
@@ -549,6 +550,7 @@ contains  !> MODULE PROCEDURES START HERE
     integer,intent(in) :: iunit !> assume the unit is open for writing
 
     character(len=200) :: atmp
+    character(len=256) :: marker_line
     integer :: ii
     logical :: use_hartree
     real(wp) :: raw_out,rest_out,total_out
@@ -607,6 +609,11 @@ contains  !> MODULE PROCEDURES START HERE
       write (atmp,'("species:S:1:pos:R:3")')
     end if
     write (iunit,'(a,a,a)',advance='no') 'Properties=',trim(atmp),' '
+    if (allocated(self%origin)) then
+      if (gmc_token_valid(self%origin)) then
+        write (iunit,'(a,a)',advance='no') 'GMC_TFI=',trim(self%origin)
+      end if
+    end if
     write (iunit,*)
 
     !> coord block
@@ -745,6 +752,7 @@ contains  !> MODULE PROCEDURES START HERE
     character(len=32) :: btmp
     real(wp) :: etmp,rawtmp,resttmp,totaltmp
     logical :: validtmp,use_components
+    character(len=512) :: marker_line
     use_components = self%energy_components_valid
     if (present(energy)) use_components = use_components .and. &
       & abs(energy-self%energy_total) <= 1.0e-10_wp
@@ -759,12 +767,14 @@ contains  !> MODULE PROCEDURES START HERE
         write (btmp,'(f22.10)') self%energy
         write (atmp,'(a,a)') ' energy= ',adjustl(btmp)
       end if
-      if (allocated(self%comment)) then
-        call wrxyz(iunit,self%nat,self%at,self%xyz, &
-        &          trim(atmp)//' '//trim(self%comment))
-      else
-        call wrxyz(iunit,self%nat,self%at,self%xyz,trim(atmp))
+      if (allocated(self%comment)) atmp = trim(atmp)//' '//trim(self%comment)
+      if (allocated(self%origin)) then
+        if (gmc_token_valid(self%origin)) then
+          call gmc_append_token(trim(atmp),self%origin,marker_line)
+          atmp = marker_line
+        end if
       end if
+      call wrxyz(iunit,self%nat,self%at,self%xyz,trim(atmp))
       self%xyz = self%xyz/bohr !back
     else
       !> extxyz append

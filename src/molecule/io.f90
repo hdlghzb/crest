@@ -1017,7 +1017,7 @@ contains  !> MODULE PROCEDURES START HERE
   subroutine read_extxyz_frame(iunit,ext_sigs,ext_props,nat,energy,lat,success, &
   &                            energy_units,forces_units,energy_raw, &
   &                            energy_restraint,energy_total, &
-  &                            energy_components_found)
+  &                            energy_components_found,comment_out)
     implicit none
 
     ! Formal Arguments
@@ -1032,6 +1032,7 @@ contains  !> MODULE PROCEDURES START HERE
     character(len=32),intent(out),optional :: forces_units
     real(wp),intent(out),optional :: energy_raw,energy_restraint,energy_total
     logical,intent(out),optional :: energy_components_found
+    character(len=*),intent(out),optional :: comment_out
 
     ! Internal variables
     integer                      :: i,ierr,total_fields
@@ -1071,6 +1072,7 @@ contains  !> MODULE PROCEDURES START HERE
       success = .false.
       return
     end if
+    if (present(comment_out)) comment_out = trim(comment_line)
 
     ! 3. Extract Key-Value Pairs
     ! Extract Energy

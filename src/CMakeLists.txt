@@ -46,6 +46,7 @@ list(APPEND srcs
   "${dir}/cn.f90"
   "${dir}/compress.f90"
   "${dir}/gmc_api.f90"
+  "${dir}/gmc_task_final_provenance.f90"
   "${dir}/confparse.f90"
   "${dir}/crest_pars.f90"
   "${dir}/eval_timer.f90"

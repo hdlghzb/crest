@@ -543,6 +543,8 @@ subroutine crest_oloop_struc(env,nall,structures,dump,customcalc,eread,silent)
   use strucrd
   use optimize_module
   use iomod,only:makedir,directory_exist,remove
+  use gmc_task_final_provenance,only:gmc_task_final_active, &
+    & gmc_task_final_record_optimization
   use term_ui,only:progress_init,progress_update,progress_finish
   implicit none
   type(systemdata),target,intent(inout) :: env
@@ -556,7 +558,7 @@ subroutine crest_oloop_struc(env,nall,structures,dump,customcalc,eread,silent)
 
   type(coord),allocatable :: mols(:)
   type(coord),allocatable :: molsnew(:)
-  integer :: i,j,io,ich,ich2,c,k,z,zcopy
+  integer :: i,j,io,ich,ich2,c,k,z,zcopy,optimized_output_index,dump_output_count
   logical :: pr,wr,ex
   type(calcdata),allocatable :: calculations(:)
   real(wp) :: energy,gnorm
@@ -635,18 +637,19 @@ subroutine crest_oloop_struc(env,nall,structures,dump,customcalc,eread,silent)
   c = 0  !> counter of successfull optimizations
   k = 0  !> counter of total optimization (fail+success)
   z = 0  !> counter to perform optimization in right order (1...nall)
+  dump_output_count = 0  !> actual successful dump occurrence order
 !>--- pre-start server-based calculators before forking OMP threads
   call preinit_mlip_parallel(calculations,T)
 !>--- loop over ensemble
   !$omp parallel &
   !$omp shared(env,calculations,nall,structures,c,k,z,pr,wr,dump) &
-  !$omp shared(ich,ich2,mols,molsnew,nested,Tn)
+  !$omp shared(ich,ich2,mols,molsnew,nested,Tn,dump_output_count)
   !$omp single
   do i = 1,nall
 
     call initsignal()
     vz = i
-    !$omp task firstprivate( vz ) private(j,job,energy,grad,io,atmp,gnorm,thread_id,zcopy)
+    !$omp task firstprivate( vz ) private(j,job,energy,grad,io,atmp,gnorm,thread_id,zcopy,optimized_output_index)
     call initsignal()
 
     !>--- OpenMP nested region threads
@@ -654,6 +657,7 @@ subroutine crest_oloop_struc(env,nall,structures,dump,customcalc,eread,silent)
 
     thread_id = OMP_GET_THREAD_NUM()
     job = thread_id+1
+    optimized_output_index = -1
     !>--- deep-copy this structure into the thread-local working mol
     !$omp critical
     z = z+1
@@ -674,6 +678,8 @@ subroutine crest_oloop_struc(env,nall,structures,dump,customcalc,eread,silent)
       call structures(zcopy)%copy_energy_components(molsnew(job))
       structures(zcopy)%energy = energy
       if (dump) then
+        dump_output_count = dump_output_count+1
+        optimized_output_index = dump_output_count
         gnorm = norm2(grad)
         write (atmp,'(1x,"energy=",f16.10,1x,"g norm=",f12.8)') energy,gnorm
         molsnew(job)%comment = trim(atmp)
@@ -689,6 +695,16 @@ subroutine crest_oloop_struc(env,nall,structures,dump,customcalc,eread,silent)
     else
       structures(zcopy)%energy = 1.0_wp
       call structures(zcopy)%invalidate_energy_components()
+    end if
+    if (gmc_task_final_active()) then
+      if (io == 0) then
+        call gmc_task_final_record_optimization(zcopy,'optimization_success', &
+          & optimized_output_index)
+      else if (io == calculations(job)%maxcycle.and.calculations(job)%anopt) then
+        call gmc_task_final_record_optimization(zcopy,'partial_optimization_accepted',-1)
+      else
+        call gmc_task_final_record_optimization(zcopy,'optimization_failed',-1)
+      end if
     end if
     k = k+1
     !>--- print progress
